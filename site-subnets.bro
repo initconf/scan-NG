@@ -36,6 +36,11 @@ export {
 
 event reporter_error(t: time , msg: string , location: string )
 {
+	# we got two choices either populate subnet_feed with local_nets
+	# that way there is no darknet space - this effectively disables LandMine
+	# or just disable LandMine detection using Scan::activate_LandMine = F ; 
+	
+	Scan::activate_LandMine = F ; 
 
         if (/LBL-subnets.csv-LATEST_BRO.2\/Input::READER_ASCII: Init failed/ in msg)
         if (subnet_feed in msg)

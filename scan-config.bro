@@ -25,8 +25,8 @@ redef Scan::activate_PortScan = F ;
 ###	#fields nets    comment
 ###	15.5.5.5/32     NO scanning from EDU
 
-redef Scan::whitelist_ip_file = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" ; 
-redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" ; 
+redef Scan::whitelist_ip_file = "/usr/local/feeds/BRO-feeds/ip-whitelist.scan" ; 
+redef Scan::whitelist_subnet_file = "/usr/local/feeds/BRO-feeds/subnet-whitelist.scan" ; 
 
 
 ####### KnockKnockScan whitelist file 
@@ -36,7 +36,7 @@ redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan
 ###	#fields exclude_ip      exclude_port    t       comment
 ###	11.3.2.5  123	tcp     example comment 
 
-redef ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" ; 
+redef ipportexclude_file  = "/usr/local/feeds/BRO-feeds/knockknock.exceptions" ; 
 
 
 ########### scan-summary.bro config #######################################################
@@ -104,15 +104,6 @@ redef Scan::knock_high_threshold_ports += {
 ### Skip the following as since already blocked on border 
 ### affects entire Scan Detection 
 
-redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
-				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
-				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
-				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
-				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
-				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
-				631/tcp,
-                       };
-
 redef Scan::skip_services += { 23/tcp, }; 
 
 
@@ -160,4 +151,4 @@ redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/usr/local/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 

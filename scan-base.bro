@@ -334,7 +334,7 @@ function hot_subnet_check(ip: addr)
 	local result = F ; 
 	result = check_subnet_threshold(hot_subnets_threshold, hot_subnets_idx , scanner_subnet, n); 
 
-	print fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
+	###print fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
 
 	if (result)
 	{ 

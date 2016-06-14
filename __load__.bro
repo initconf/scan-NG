@@ -12,8 +12,9 @@
 @load ./check-knock.bro 
 @load ./check-backscatter
 @load ./check-landmine
+@load ./check-lowporttroll 
 @load ./check-addressscan
-@load ./check-portscan 
+####@load ./check-portscan 
 @load ./trw
 
 @load ./check-scan-impl 

@@ -3,6 +3,8 @@ module Site  ;
 #redef exit_only_after_terminate = T ; 
 export {
 
+	 redef Site::local_nets += { 128.3.0.0/16, 131.243.0.0/16};
+
 	redef enum Notice::Type += {
                 #### Indicates that an MD5 sum was calculated for an HTTP response body.
                 Watched_Subnet,	
@@ -21,7 +23,8 @@ export {
 
 	global subnet_table: table[subnet] of subnet_Val = table() &redef ; 
 
-	global subnet_feed="/usr/local/bro/common/feeds/LBL-subnets.csv-LATEST_BRO" &redef ; 
+	global subnet_feed="/usr/local/bro-cpp/common/feeds/LBL-subnets.csv-LATEST_BRO" &redef ; 
+	###global subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO.2" &redef ; 
 
 } 
 
@@ -33,11 +36,6 @@ export {
 
 event reporter_error(t: time , msg: string , location: string )
 {
-	# we got two choices either populate subnet_feed with local_nets
-	# that way there is no darknet space - this effectively disables LandMine
-	# or just disable LandMine detection using Scan::activate_LandMine = F ; 
-	
-	Scan::activate_LandMine = F ; 
 
         if (/LBL-subnets.csv-LATEST_BRO.2\/Input::READER_ASCII: Init failed/ in msg)
         if (subnet_feed in msg)

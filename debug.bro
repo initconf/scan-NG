@@ -15,7 +15,6 @@ function  log_reporter(msg: string, debug: count)
 {
 	
 	return ; 
-
         #if (debug > 0 ) {
                 #event reporter_info(network_time(), msg, peer_description);
         #}

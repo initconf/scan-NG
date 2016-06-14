@@ -58,7 +58,7 @@ export {
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event dump_stats()
 {
-	log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
+	#log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
 	event Scan::m_w_send_performance_counters(T); 
 
 	schedule stat_freq { dump_stats() }; 	
@@ -88,7 +88,7 @@ redef Cluster::worker2manager_events += /Scan::w_m_update_performance_counters/ 
 event Scan::m_w_send_performance_counters(send: bool)
 {
 	worker_count = 0 ; 
-	log_reporter(fmt ("m_w_send_performance_counters calling w_m_update_performance_counters" ),0); 
+	#log_reporter(fmt ("m_w_send_performance_counters calling w_m_update_performance_counters" ),0); 
 	event Scan::w_m_update_performance_counters(s_counters); 
 }
 
@@ -98,8 +98,8 @@ event Scan::m_w_send_performance_counters(send: bool)
 
 event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
-	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
-	log_reporter(fmt("Got counters: %s", sc),0); 
+	#log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
+	#log_reporter(fmt("Got counters: %s", sc),0); 
 
 	
 
@@ -139,7 +139,7 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 
 	if (|aggregate_workers| == Cluster::worker_count ) 
 	{
-		log_reporter(fmt("STATISTICS: %s", s_counters),0); 
+		#log_reporter(fmt("STATISTICS: %s", s_counters),0); 
 	
 		### reset the worker reporting table again 
 		for (w in aggregate_workers) 

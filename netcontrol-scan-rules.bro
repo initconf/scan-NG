@@ -24,7 +24,6 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
                 Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: T %s", ip),1);
         }
 
-
         }
 
 event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="") &priority=-5

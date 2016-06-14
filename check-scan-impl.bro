@@ -44,42 +44,52 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 
 	local result = F ; 
 
-	if (Scan::activate_KnockKnockScan && /K/ in validator && check_KnockKnockScan(cid, established, reverse)) 
+	if (!result && Scan::activate_KnockKnockScan && /K/ in validator && check_KnockKnockScan(cid, established, reverse)) 
 	{ 
 
 		Scan::add_to_known_scanners(orig, "KnockKnockScan"); 
-		print fmt ("known_scanners is : %s", known_scanners[cid$orig_h]); 
-		print fmt ("scan_summary is : %s", scan_summary[cid$orig_h]); 
-
-		return result = T; 
+		result = T; 
 	} 
 
-	if (Scan::activate_BackscatterSeen &&  /B/ in validator && Scan::check_BackscatterSeen(cid, established, reverse))
+	if (!result && Scan::activate_BackscatterSeen &&  /B/ in validator && Scan::check_BackscatterSeen(cid, established, reverse))
 	{
 		#log_reporter (fmt("run_scan_detection: check_BackscatterSeen %s, %s", ci, validator),0); 
 		Scan::add_to_known_scanners(orig, "BackscatterSeen");	
-		return result = T; 
+		result = T; 
 	} 
 
-	if (activate_LandMine && /L/ in validator && check_LandMine(cid, established, reverse))
+	if (!result && activate_LandMine && /L/ in validator && check_LandMine(cid, established, reverse))
 	{
 		Scan::add_to_known_scanners(orig, "LandMine"); 
-		return result = T; 
+		result = T; 
 	} 
 	
-	if (activate_AddressScan && /A/ in validator && check_AddressScan(cid, established, reverse)) 
+	if (!result && activate_AddressScan && /A/ in validator && check_AddressScan(cid, established, reverse)) 
 	{
 		Scan::add_to_known_scanners(orig, "AddressScan");
-		return result = T; 
+		result = T; 
 	} 
 
-#	if (activate_PortScan && /P/ in validator && check_PortScan(cid, established, reverse))
+	if (!result && activate_LowPortTrolling && /T/ in validator && check_LowPortTroll(cid, established, reverse)) 
+	{
+		Scan::add_to_known_scanners(orig, "LowPortTrolling");
+		result = T; 
+	} 
+
+
+	if (result)
+	{ 
+		Scan::hot_subnet_check(orig); 
+	} 
+	
+
+#	if (activate_PortScan && /P/ in validator && check_PortScan(cid, established, reverse)) 
 #	{
 #		return result = T; 
 #	} 
 
-
 	#log_reporter (fmt("run_scan_detection: result is %s, %s, %s", result, cid, validator),0); 
+
 	return result ;
 }
 
@@ -189,6 +199,9 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, val
 		
         if (result)
         {
+
+
+
 		# check for conn_history - that is if we ever saw a full SF going to this IP
 		if (History::check_conn_history(orig)) 
 		{

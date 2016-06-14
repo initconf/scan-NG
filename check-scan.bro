@@ -30,7 +30,6 @@ function is_catch_release_active(cid: conn_id): bool
 	if (gather_statistics)	
 		s_counters$is_catch_release_active += 1; 
 	
-@ifdef(NetControl::BlockInfo)
 	local orig = cid$orig_h ; 
 
         local bi: NetControl::BlockInfo ;
@@ -44,7 +43,6 @@ function is_catch_release_active(cid: conn_id): bool
         ### means empty bi
         ### [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
 
-@endif 
         return F ;
 }
 
@@ -171,6 +169,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	local valid__AddressScan = "" ;
 	local valid__PortScan = "" ;
 	local valid_port_knock = "" ; 
+	local valid__LowPortTroll = "" ; 
 	
         
 	# run validation code on the workers for each scan module 
@@ -192,14 +191,19 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	if (activate_AddressScan)
 		valid__AddressScan = Scan::validate_AddressScan(c, established, reverse); 
 	
+	if (activate_LowPortTrolling)
+		valid__LowPortTroll = Scan::validate_LowPortTroll(c, established, reverse); 
+
+
+	
 	# we hold off on PortScan to use the heuristics provided by sumstats 	
 	# if (activate_PortScan)
   	#	valid__PortScan = Scan::validate_PortScan(c, established, reverse) ; 
 
 
 
-	local validator = fmt("%s%s%s%s%s", valid__KnockKnock, valid__LandMine, valid__Backscatter, valid__AddressScan, valid__PortScan); 
-	if (/K/ in valid__KnockKnock || /L/ in valid__LandMine || /B/ in valid__Backscatter  || /A/ in valid__AddressScan )  
+	local validator = fmt("%s%s%s%s%s%s", valid__KnockKnock, valid__LandMine, valid__Backscatter, valid__AddressScan, valid__PortScan,valid__LowPortTroll); 
+	if (/K/ in valid__KnockKnock || /L/ in valid__LandMine || /B/ in valid__Backscatter  || /A/ in valid__AddressScan || /T/ in valid__LowPortTroll)  
 	{ 
 		#### So connection met one or more of heuristic validation criterias 
 		#### send for further determination into check-scan-impl.bro now 

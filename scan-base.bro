@@ -9,9 +9,18 @@ export {
 
 	global enable_big_tables = F &redef ; 
 
+	global darknet_v6: set [subnet] = { [2001:400:613:18::]/64, };
+
+        redef Site::local_nets += {     128.3.0.0/16, 131.243.0.0/16, 192.12.173.0/24,
+                                        192.58.231.0/24, 204.62.155.0/24, [2620:83:8000::]/48,
+                                        198.128.24.0/21, 198.128.42.0/24, 198.128.192.0/19,
+                                        [2620:83:8001::]/48, [2001:400:613:18::]/64,
+                                  } ;
+
 	 redef enum Notice::Type += {
                 PasswordGuessing, 	# source tried many user/password combinations
                 SuccessfulPasswordGuessing,     # same, but a login succeeded
+		HotSubnet, 	# Too many scanners originating from this subnet 
         };
 
         type scan_info : record {
@@ -79,8 +88,13 @@ export {
 	global ignore_addr: function(a: addr); 
 	global clear_addr: function (a: addr); 
 
+	global hot_subnets: table[subnet] of set[addr] &create_expire=7 days; 
+	global hot_subnets_idx: table[subnet] of count &create_expire=7 days; 
+	global hot_subnets_threshold: vector of count = { 3, 10, 25, 100, 200, 255 } ; 
+	
 
-
+	global hot_subnet_check:function(ip: addr); 
+	global check_subnet_threshold: function (v: vector of count, idx: table[subnet] of count, orig: subnet, n: count):bool ; 
 
 }  #### end of export 
 
@@ -283,3 +297,50 @@ event table_sizes()
 } 
 
 
+function check_subnet_threshold(v: vector of count, idx: table[subnet] of count, orig: subnet, n: count):bool
+{
+	if (orig !in idx)
+		idx[orig]=  0 ;
+
+### print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
+
+	 if ( idx[orig] < |v| && n >= v[idx[orig]] )
+                {
+                ++idx[orig];
+
+                return (T);
+                }
+        else
+                return (F);
+}
+
+function hot_subnet_check(ip: addr)
+{
+
+	 # check for subnet scanners
+	 local scanner_subnet = mask_addr(ip, 24) ;
+
+	if (scanner_subnet !in hot_subnets)
+	{
+		local a: set[addr]  ; 
+		hot_subnets[scanner_subnet] = a ; 
+	} 
+
+	if (ip !in hot_subnets[scanner_subnet] ); 
+		add hot_subnets[scanner_subnet][ip]; 
+ 
+	local n = |hot_subnets[scanner_subnet]|  ; 
+	
+	local result = F ; 
+	result = check_subnet_threshold(hot_subnets_threshold, hot_subnets_idx , scanner_subnet, n); 
+
+	print fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
+
+	if (result)
+	{ 
+		local _msg = fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
+	
+		NOTICE([$note=HotSubnet,  $src_peer=get_local_event_peer(), $src=ip, $msg=fmt("%s", _msg)]);
+	} 
+
+}

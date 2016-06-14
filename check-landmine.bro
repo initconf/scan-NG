@@ -3,7 +3,7 @@
 module Scan; 
 
 @load base/protocols/conn
-#@load ./site-subnets.bro 
+#@load site-subnets.bro 
 
 export 
 { 

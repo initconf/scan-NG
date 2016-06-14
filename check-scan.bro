@@ -53,8 +53,12 @@ function is_catch_release_active(cid: conn_id): bool
 ## Returns: bool - T/F depending on various conditions satisfied internally 
 function not_scanner(cid: conn_id): bool 
 {
+
+@ifdef (NetControl::BlockInfo)
+
 	if (is_catch_release_active(cid) )
 		return T ; 
+@endif 
 
 	local result = F ; 
 

@@ -35,52 +35,41 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 {
 
 	if (gather_statistics)
-       	{
-       		s_counters$run_scan_detection += 1;
-       	}
+		{
+			s_counters$run_scan_detection += 1;
+		}
 
 	local cid=ci$cid ; 
 	local orig=ci$cid$orig_h; 
 
-	local result = F ; 
-
-	if (!result && Scan::activate_KnockKnockScan && /K/ in validator && check_KnockKnockScan(cid, established, reverse)) 
+	if ( Scan::activate_KnockKnockScan && "K" in validator && check_KnockKnockScan(cid, established, reverse)) 
 	{ 
-
 		Scan::add_to_known_scanners(orig, "KnockKnockScan"); 
-		result = T; 
 	} 
-
-	if (!result && Scan::activate_BackscatterSeen &&  /B/ in validator && Scan::check_BackscatterSeen(cid, established, reverse))
+	else if ( Scan::activate_BackscatterSeen &&  "B" in validator && Scan::check_BackscatterSeen(cid, established, reverse))
 	{
 		#log_reporter (fmt("run_scan_detection: check_BackscatterSeen %s, %s", ci, validator),0); 
 		Scan::add_to_known_scanners(orig, "BackscatterSeen");	
-		result = T; 
 	} 
-
-	if (!result && activate_LandMine && /L/ in validator && check_LandMine(cid, established, reverse))
+	else if ( activate_LandMine && "L" in validator && check_LandMine(cid, established, reverse))
 	{
 		Scan::add_to_known_scanners(orig, "LandMine"); 
-		result = T; 
 	} 
-	
-	if (!result && activate_AddressScan && /A/ in validator && check_AddressScan(cid, established, reverse)) 
+	else if ( activate_AddressScan && "A" in validator && check_AddressScan(cid, established, reverse)) 
 	{
 		Scan::add_to_known_scanners(orig, "AddressScan");
-		result = T; 
 	} 
-
-	if (!result && activate_LowPortTrolling && /T/ in validator && check_LowPortTroll(cid, established, reverse)) 
+	else if ( activate_LowPortTrolling && "T" in validator && check_LowPortTroll(cid, established, reverse)) 
 	{
 		Scan::add_to_known_scanners(orig, "LowPortTrolling");
-		result = T; 
 	} 
+	else 		
+	{
+		return F; 
+	}	
 
 
-	if (result)
-	{ 
 		Scan::hot_subnet_check(orig); 
-	} 
 	
 
 #	if (activate_PortScan && /P/ in validator && check_PortScan(cid, established, reverse)) 
@@ -90,7 +79,7 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 
 	#log_reporter (fmt("run_scan_detection: result is %s, %s, %s", result, cid, validator),0); 
 
-	return result ;
+	return T ;
 }
 
 ####### clusterizations
@@ -104,19 +93,19 @@ function populate_table_start_ts(ci: conn_info)
 {
 	local orig=ci$cid$orig_h ; 
 
-        if (orig !in table_start_ts)
-        {
-                local st: start_ts ;
-                table_start_ts[orig] = st ;
-                table_start_ts[orig]$ts = ci$ts ;
-        }
+		if (orig !in table_start_ts)
+		{
+				local st: start_ts ;
+				table_start_ts[orig] = st ;
+				table_start_ts[orig]$ts = ci$ts ;
+		}
 
-        table_start_ts[orig]$conn_count += 1 ;
+		table_start_ts[orig]$conn_count += 1 ;
 
-        ### gather the smallest timestamp for that IP
-        ### different workers see different ts
-        if (table_start_ts[orig]$ts > ci$ts)
-                table_start_ts[orig]$ts  = ci$ts ;
+		### gather the smallest timestamp for that IP
+		### different workers see different ts
+		if (table_start_ts[orig]$ts > ci$ts)
+				table_start_ts[orig]$ts  = ci$ts ;
 } 
 
 
@@ -131,11 +120,11 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, valid
 
 	if (gather_statistics)
 	{
-       		s_counters$check_scan_cache += 1;
+			s_counters$check_scan_cache += 1;
 	}
 
-        local orig = c$id$orig_h ;
-        local resp = c$id$resp_h;
+	local orig = c$id$orig_h ;
+	local resp = c$id$resp_h;
 	
 	local ci: conn_info ;
 	
@@ -144,25 +133,25 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, valid
 
 	### too expensive log_reporter(fmt("check_scan_cache: %s, validator is : %s", c$id, validator),0); 
 
-        #already identified as scanner no need to proceed further
-        if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
+		#already identified as scanner no need to proceed further
+	if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
 	{ 
-       		s_counters$check_scan_counter += 1;
+			s_counters$check_scan_counter += 1;
 		log_reporter(fmt("inside check_scan_cache: known_scanners[%s], %s", orig, known_scanners[orig]),0); 
-                return;
+				return;
 	} 
 
 	#### we run knockknockport local on each worker since portscan is too expensive 
 	#### in term of traffic between nodes and its not worth this conjestion 
 	
 
-        ### if standalone then we check on bro node else we deligate manager to handle this
-        @if ( Cluster::is_enabled() )
-                event Scan::w_m_new_scanner(ci, established, reverse, validator);
-        @else
+		### if standalone then we check on bro node else we deligate manager to handle this
+		@if ( Cluster::is_enabled() )
+				event Scan::w_m_new_scanner(ci, established, reverse, validator);
+		@else
 		populate_table_start_ts(ci); 
 		run_scan_detection (ci, established, reverse, validator) ;
-        @endif
+		@endif
 
 }
 
@@ -174,13 +163,16 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, valid
 ## established: bool - if connect was established 
 ## reverse: bool 
 ## validator: string - comprises of K,L,A,B depending on which one of the validation was successful 
+
+### change conn_info to something else - ConnInfo  (camel casing to _ to do types) - name for new data structrues 
+
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, validator: string )
 {
 
 	if (gather_statistics)
-       	{
-       		s_counters$worker_to_manager_counter += 1;
+		{
+			s_counters$worker_to_manager_counter += 1;
 	}
 	
 	#### log_reporter(fmt("A in inside w_m_new_scanner: %s, %s", ci, validator),0); 
@@ -192,13 +184,13 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, val
 
 	populate_table_start_ts(ci); 
 
-       	local result = Scan::run_scan_detection(ci, established, reverse, validator) ; 
+		local result = Scan::run_scan_detection(ci, established, reverse, validator) ; 
 
 	### if successful notify all workers of scanner 
 	### so that they stop reporting further 
 		
-        if (result)
-        {
+		if (result)
+		{
 
 
 
@@ -212,7 +204,7 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, val
 		# this is needed to keep known_scanners table syncd on all workers 
 
 		event Scan::m_w_add_scanner(known_scanners[orig]); 
-        }
+		}
 }
 @endif
 
@@ -225,7 +217,7 @@ event Scan::m_w_add_scanner (ss: scan_info)
 
 	local orig = ss$scanner; 
 	local detection = ss$detection ; 
-        Scan::add_to_known_scanners(orig, detection );
+		Scan::add_to_known_scanners(orig, detection );
 	
 }
 @endif
@@ -259,19 +251,19 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 {
 	#### log_reporter(fmt("function Scan::add_to_known_scanners: %s, %s", orig, detect),0); 
 
-	local new = F ; 
-        if (orig !in Scan::known_scanners)
-        {
-                local si: scan_info;
-                Scan::known_scanners[orig] = si ;
-		new = T ; 
-        }
-                Scan::known_scanners[orig]$scanner=orig;
-                Scan::known_scanners[orig]$status = T ;
-                Scan::known_scanners[orig]$detection = detect ;
+		local new = F ; 
+		if (orig !in Scan::known_scanners)
+		{
+			local si: scan_info;
+			Scan::known_scanners[orig] = si ;
+			new = T ; 
+		}
+		Scan::known_scanners[orig]$scanner=orig;
+		Scan::known_scanners[orig]$status = T ;
+		Scan::known_scanners[orig]$detection = detect ;
 		Scan::known_scanners[orig]$detect_ts = network_time(); 
-                Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
-        
+		Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
+		
 		#### log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
 
 
@@ -280,17 +272,17 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 	{
 		if (orig !in Scan::scan_summary)
 		{
-                local ss: scan_stats;
-                #local hh : set[addr];
-                Scan::scan_summary[orig] = ss ;
-                #Scan::scan_summary[orig]$hosts=hh ;
+				local ss: scan_stats;
+				#local hh : set[addr];
+				Scan::scan_summary[orig] = ss ;
+				#Scan::scan_summary[orig]$hosts=hh ;
 		}  
 
-                Scan::scan_summary[orig]$scanner=orig;
-                Scan::scan_summary[orig]$status = T ;
-                Scan::scan_summary[orig]$detection = detect ;
-                Scan::scan_summary[orig]$detect_ts = network_time();
-                Scan::scan_summary[orig]$event_peer = fmt ("%s", peer_description);
+				Scan::scan_summary[orig]$scanner=orig;
+				Scan::scan_summary[orig]$status = T ;
+				Scan::scan_summary[orig]$detection = detect ;
+				Scan::scan_summary[orig]$detect_ts = network_time();
+				Scan::scan_summary[orig]$event_peer = fmt ("%s", peer_description);
 
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )|| (! Cluster::is_enabled()))
 		if (new)

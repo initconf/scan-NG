@@ -32,6 +32,7 @@ function is_catch_release_active(cid: conn_id): bool
 	
 	local orig = cid$orig_h ; 
 
+@ifdef (NetControl::BlockInfo)
         local bi: NetControl::BlockInfo ;
         bi = NetControl::get_catch_release_info(orig);
 
@@ -42,6 +43,7 @@ function is_catch_release_active(cid: conn_id): bool
 
         ### means empty bi
         ### [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
+@endif 
 
         return F ;
 }
@@ -54,11 +56,11 @@ function is_catch_release_active(cid: conn_id): bool
 function not_scanner(cid: conn_id): bool 
 {
 
-@ifdef (NetControl::BlockInfo)
+
 
 	if (is_catch_release_active(cid) )
 		return T ; 
-@endif 
+
 
 	local result = F ; 
 
@@ -204,9 +206,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	# if (activate_PortScan)
   	#	valid__PortScan = Scan::validate_PortScan(c, established, reverse) ; 
 
-
-
-	local validator = fmt("%s%s%s%s%s%s", valid__KnockKnock, valid__LandMine, valid__Backscatter, valid__AddressScan, valid__PortScan,valid__LowPortTroll); 
+	
 	if (/K/ in valid__KnockKnock || /L/ in valid__LandMine || /B/ in valid__Backscatter  || /A/ in valid__AddressScan || /T/ in valid__LowPortTroll)  
 	{ 
 		#### So connection met one or more of heuristic validation criterias 
@@ -218,8 +218,11 @@ function check_scan(c: connection, established: bool, reverse: bool)
 		### we maintain a uid_table with create_expire of 30 secs so that same connection processed by one event 
 		### is not again sent - for example if C is already processed in scan-engine for new_connection, lets not 
 		### process same C for subsiquent TCP events such as conn_terminate or conn_rejected etc. 
+		### call conn_state_remove 
+		
 		if (c$uid !in uid_table)
 		{ 
+			local validator = fmt("%s%s%s%s%s%s", valid__KnockKnock, valid__LandMine, valid__Backscatter, valid__AddressScan, valid__PortScan,valid__LowPortTroll); 
 			uid_table[c$uid]=T ; 
 			check_scan_cache(c, established, reverse, validator) ; 
 		} 
@@ -229,17 +232,17 @@ function check_scan(c: connection, established: bool, reverse: bool)
 
 ### speed up landmine and knockknock for darknet space 
 event new_connection(c: connection)
-{
+	{
 	### for new connections we just want to supply C and only for darknet spaces 
 	### to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
 
 	if (gather_statistics)
-	{ 
+		{ 
 		s_counters$event_peer = fmt ("%s", peer_description); 
 		s_counters$new_conn_counter += 1; 
-	} 
+		} 
 
-         local tp = get_port_transport_proto(c$id$resp_p);
+    local tp = get_port_transport_proto(c$id$resp_p);
         
 	if (tp == tcp && c$id$orig_h !in Site::local_nets && is_darknet(c$id$resp_h) )
 	{
@@ -254,29 +257,29 @@ event connection_state_remove(c: connection)
 
 
 event connection_established(c: connection)
-       {
-       local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
-       Scan::check_scan(c, T, is_reverse_scan);
+	{
+	local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
+	Scan::check_scan(c, T, is_reverse_scan);
 
-       local trans = get_port_transport_proto(c$id$orig_p);
-       if ( trans == tcp && ! is_reverse_scan && TRW::use_TRW_algorithm )
-              TRW::check_TRW_scan(c, conn_state(c, trans), F);
-       }
+	local trans = get_port_transport_proto(c$id$orig_p);
+	if ( trans == tcp && ! is_reverse_scan && TRW::use_TRW_algorithm )
+	       TRW::check_TRW_scan(c, conn_state(c, trans), F);
+	}
 
 event partial_connection(c: connection)
-       {
-       Scan::check_scan(c, T, F);
-       }
+	{
+	Scan::check_scan(c, T, F);
+	}
 
 event connection_attempt(c: connection)
-       {
+	{
     local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
-       Scan::check_scan(c, F, is_reverse_scan);
+	Scan::check_scan(c, F, is_reverse_scan);
 
-       local trans = get_port_transport_proto(c$id$orig_p);
-       if ( trans == tcp && TRW::use_TRW_algorithm )
-              TRW::check_TRW_scan(c, conn_state(c, trans), F);
-       }
+	local trans = get_port_transport_proto(c$id$orig_p);
+	if ( trans == tcp && TRW::use_TRW_algorithm )
+	       TRW::check_TRW_scan(c, conn_state(c, trans), F);
+	}
 
 event connection_half_finished(c: connection)
        {

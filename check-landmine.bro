@@ -45,7 +45,7 @@ export
 	const MIN_SUBNET_CHECK=1 ; 
 
 	global check_LandMine:function (cid: conn_id, established: bool, reversed: bool ): bool ; 
- 	global validate_LandMineScan: function(c: connection, darknet: bool ): string ; 
+ 	global filterate_LandMineScan: function(c: connection, darknet: bool ): string ; 
 } 
 
 function landmine_scan_summary(t: table[addr] of set[addr], orig: addr): interval
@@ -176,11 +176,11 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	return result  ; 
 }
 
-function validate_LandMineScan(c: connection, darknet: bool ): string 
+function filterate_LandMineScan(c: connection, darknet: bool ): string 
 { 
 
 	 if (gather_statistics)
-                s_counters$c_land_validate += 1  ;
+                s_counters$c_land_filterate += 1  ;
 
         local orig = c$id$orig_h ; 
         local resp = c$id$resp_h ; 
@@ -248,7 +248,7 @@ function validate_LandMineScan(c: connection, darknet: bool ): string
 #@if ( ! Cluster::is_enabled())
 #event connection_state_remove(c: connection)
 #{
-#	validate_LandMine(c); 
+#	filterate_LandMine(c); 
 #}
 #@endif 
 

@@ -12,23 +12,23 @@ export {
 		darknet_counter	: count &log &default=0 ;
 		not_darknet_counter	: count &log &default=0 ;
 		already_scanner_counter : count &log &default=0 ;
-		validation_entry : count &log &default=0 ;
-		validation_success: count &log &default=0 ;
+		filteration_entry : count &log &default=0 ;
+		filteration_success: count &log &default=0 ;
 
 		
-		c_knock_validate: count &log &default=0 ;
+		c_knock_filterate: count &log &default=0 ;
 		c_knock_checkscan: count &log &default=0 ;
 		c_knock_core: count &log &default=0 ;
 		
-		c_land_validate: count &log &default=0 ;
+		c_land_filterate: count &log &default=0 ;
 		c_land_checkscan: count &log &default=0 ;
 		c_land_core: count &log &default=0 ;
 
-		c_backscat_validate: count &log &default=0 ;
+		c_backscat_filterate: count &log &default=0 ;
 		c_backscat_checkscan: count &log &default=0 ;
 		c_backscat_core: count &log &default=0 ;
 
-		c_addressscan_validate: count &log &default=0 ;
+		c_addressscan_filterate: count &log &default=0 ;
 		c_addressscan_checkscan: count &log &default=0 ;
 		c_addressscan_core: count &log &default=0 ;
 
@@ -111,18 +111,18 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 		s_counters$darknet_counter	 += sc$darknet_counter ; 
 		s_counters$not_darknet_counter	 += sc$not_darknet_counter ; 
 		s_counters$already_scanner_counter  += sc$already_scanner_counter ; 
-		s_counters$validation_entry  += sc$validation_entry  ; 
-		s_counters$validation_success += sc$validation_success ; 
-		s_counters$c_knock_validate += sc$c_knock_validate ; 
+		s_counters$filteration_entry  += sc$filteration_entry  ; 
+		s_counters$filteration_success += sc$filteration_success ; 
+		s_counters$c_knock_filterate += sc$c_knock_filterate ; 
 		s_counters$c_knock_checkscan += sc$c_knock_checkscan  ; 
 		s_counters$c_knock_core += sc$c_knock_core ; 
-		s_counters$c_land_validate += sc$c_land_validate ; 
+		s_counters$c_land_filterate += sc$c_land_filterate ; 
 		s_counters$c_land_checkscan += 	sc$c_land_checkscan ; 
 		s_counters$c_land_core += sc$c_land_core  ; 
-		s_counters$c_backscat_validate += sc$c_backscat_validate ; 
+		s_counters$c_backscat_filterate += sc$c_backscat_filterate ; 
 		s_counters$c_backscat_checkscan += sc$c_backscat_checkscan ; 
 		s_counters$c_backscat_core += sc$c_backscat_core ; 
-		s_counters$c_addressscan_validate += sc$c_addressscan_validate ; 
+		s_counters$c_addressscan_filterate += sc$c_addressscan_filterate ; 
 		s_counters$c_addressscan_checkscan += sc$c_addressscan_checkscan ; 
 		s_counters$c_addressscan_core += sc$c_addressscan_core  ; 
 		s_counters$check_scan_counter += sc$check_scan_counter  ; 
@@ -152,13 +152,13 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
                 s_counters$darknet_counter        = 0 ; 
                 s_counters$not_darknet_counter    = 0 ; 
                 s_counters$already_scanner_counter   = 0 ; 
-                s_counters$validation_entry   = 0 ; 
-                s_counters$validation_success  = 0 ; 
+                s_counters$filteration_entry   = 0 ; 
+                s_counters$filteration_success  = 0 ; 
 
-                s_counters$c_knock_validate  = 0 ; 
-                s_counters$c_land_validate  = 0 ; 
-                s_counters$c_backscat_validate  = 0 ; 
-                s_counters$c_addressscan_validate  = 0 ; 
+                s_counters$c_knock_filterate  = 0 ; 
+                s_counters$c_land_filterate  = 0 ; 
+                s_counters$c_backscat_filterate  = 0 ; 
+                s_counters$c_addressscan_filterate  = 0 ; 
 
                 s_counters$check_scan_counter  = 0 ; 
                 s_counters$check_scan_cache  = 0 ; 

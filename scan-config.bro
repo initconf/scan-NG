@@ -9,9 +9,9 @@ module Scan;
 redef Scan::activate_KnockKnockScan = T ; 
 redef Scan::activate_BackscatterSeen = T ; 
 redef Scan::activate_LandMine = T ;
-redef Scan::activate_LowPortTrolling = F ; 
+redef Scan::activate_LowPortTrolling = T ; 
 redef Scan::activate_AddressScan = T; 
-redef TRW::use_TRW_algorithm = F ; 
+redef TRW::use_TRW_algorithm = T ; 
 #redef Scan::activate_PortScan = F ;
 
 

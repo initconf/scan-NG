@@ -41,7 +41,7 @@ export {
 	const BACKSCATTER_THRESH = 10 ; 
 	
 	global check_BackscatterSeen: function(cid: conn_id, established: bool, reverse: bool): bool ; 
-	global validate_BackscatterSeen: function (c: connection, darknet: bool ): string  ; 
+	global filterate_BackscatterSeen: function (c: connection, darknet: bool ): string  ; 
 }
 
 
@@ -191,14 +191,14 @@ function check_BackscatterSeen(cid: conn_id, established: bool, reverse: bool): 
 
 
 
-function validate_BackscatterSeen(c: connection, darknet: bool ): string  
+function filterate_BackscatterSeen(c: connection, darknet: bool ): string  
 {
 
         if (! activate_BackscatterSeen)
                 return "";
 
 	 if (gather_statistics)
-                s_counters$c_backscat_validate += 1  ;
+                s_counters$c_backscat_filterate += 1  ;
 
         local orig = c$id$orig_h ;
         local resp = c$id$resp_h ;

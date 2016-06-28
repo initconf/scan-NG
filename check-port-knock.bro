@@ -75,7 +75,7 @@ export {
 
 	global check_knockknock_port: function(orig: addr, d_port: port, resp: addr): bool  ; 
 	global check_KnockKnockPort: function(cid: conn_id, established: bool, reverse: bool ): bool; 
-	global validate_KnockKnockPort: function (c: connection, darknet: bool ): string ; 
+	global filterate_KnockKnockPort: function (c: connection, darknet: bool ): string ; 
 
 	global c_concurrent_scanners_per_port: table[port] of opaque of cardinality 
 		&default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); } 
@@ -175,7 +175,7 @@ function check_knockknock_port(orig: addr, d_port: port, resp: addr): bool
 function check_KnockKnockPort(cid: conn_id, established: bool, reverse: bool ): bool 
 {
 
-	## already validated connection 
+	## already filterated connection 
 
 	local orig = cid$orig_h ;
 	local resp = cid$resp_h ;
@@ -234,7 +234,7 @@ event connection_state_remove(c: connection)
 {
 	local darknet = F; 
 
-	if (/PortKnock/ in validate_KnockKnockPort(c,F)) 
+	if (/PortKnock/ in filterate_KnockKnockPort(c,F)) 
 	{
 		if (check_KnockKnockPort(c$id, F, F))
 		{ 
@@ -245,7 +245,7 @@ event connection_state_remove(c: connection)
 	
 }
 
-function validate_KnockKnockPort(c: connection, darknet: bool ): string 
+function filterate_KnockKnockPort(c: connection, darknet: bool ): string 
 { 
 
 	

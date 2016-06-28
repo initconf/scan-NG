@@ -29,7 +29,7 @@ export {
 		25/tcp, 21/tcp, 22/tcp, 20/tcp, 80/tcp, 443/tcp, 
 	} &redef;
 
-	global validate_LowPortTroll: function(c: connection, established: bool, reverse: bool): string ; 
+	global filterate_LowPortTroll: function(c: connection, established: bool, reverse: bool): string ; 
 
 }
 
@@ -88,7 +88,7 @@ function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): boo
 	return troll; 
 } 
 
-function validate_LowPortTroll(c: connection, established: bool, reverse: bool): string 
+function filterate_LowPortTroll(c: connection, established: bool, reverse: bool): string 
 {
 	if ( established )
 	{

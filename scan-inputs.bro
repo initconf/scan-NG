@@ -246,7 +246,7 @@ event update_whitelist()
 		 Input::force_update("whitelist_subnet");
 	} 
 
-	schedule 5 mins { update_whitelist() } ; 
+	### schedule 5 mins { update_whitelist() } ; 
 }
 
 
@@ -263,7 +263,7 @@ event read_whitelist()
 				$mode=Input::REREAD,$ev=read_whitelist_subnet]);
                 }
 
-	schedule 1 mins { update_whitelist() } ; 
+	### schedule 1 mins { update_whitelist() } ; 
 }
 
 

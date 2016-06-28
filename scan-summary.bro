@@ -8,7 +8,7 @@ export {
 
 	#global enable_scan_summary= T &redef ; 
 
-	type log_state: enum { DETECT, ONGOING, EXPIRE, UPDATE, UPDATE, SUMMARY };
+	type log_state: enum { DETECT, ONGOING, EXPIRE, UPDATE, SUMMARY };
 	
 	#### setting up logging for scan_summary.log 
 	redef enum Log::ID += { summary_LOG }; 

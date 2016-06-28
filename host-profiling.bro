@@ -17,7 +17,7 @@ export {
                 host: addr &log &optional ;
                 d_port:  port &log &optional;
 		peer: string &log &optional ; 
-                services: string &log &optional;
+                #services: string &log &optional;
         };
 
 } 
@@ -37,13 +37,13 @@ function log_host_profiles(cid: conn_id)
                 #info$id = cid ;
                 info$host= cid$resp_h;
                 info$d_port= cid$resp_p ; 
-		info$services = "" ; 
+		#info$services = "" ; 
 		
-                for (s in host_profiles[cid$resp_h])
-		{
-                        info$services += fmt (" %s ", s);
-			#print fmt ("service is %s %s", cid$resp_h, s); 
-		} 
+                #for (s in host_profiles[cid$resp_h])
+		#{
+                #       info$services += fmt (" %s ", s);
+		#	##print fmt ("service is %s %s", cid$resp_h, s); 
+		#} 
 
 		info$peer = peer_description; 
                 Log::write(Site::host_open_ports_LOG, info);

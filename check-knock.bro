@@ -26,36 +26,35 @@ export {
 	global activate_KnockKnockScan = F &redef ; 
 	
 	redef enum Notice::Type += {
-                KnockKnockScan, # source flagged as scanner by TRW algorithm
-                KnockKnockSummary, # summary of scanning activities reported by TRW
+		KnockKnockScan, # source flagged as scanner by TRW algorithm
+	       	KnockKnockSummary, # summary of scanning activities reported by TRW
 		LikelyScanner, 
 		IgnoreLikelyScanner, 
 		KnockSummary, 
+	       };
 
-        };
-	
-	 # sensitive and sticky config ports
-        global knock_high_threshold_ports: set[port] = { 861/tcp, 80/tcp, 443/tcp, 8443/tcp, 8080/tcp } &redef ;
+	# sensitive and sticky config ports
+	       global knock_high_threshold_ports: set[port] = { 861/tcp, 80/tcp, 443/tcp, 8443/tcp, 8080/tcp } &redef ;
 
-        global knock_medium_threshold_ports: set[port] = { 	17500/tcp,  # dropbox-lan-sync
-                                                    		135/tcp, 139/tcp, 445/tcp,
-                                                       		 0/tcp, 389/tcp, 88/tcp,
-                                                       		 3268/tcp, 52311/tcp,
-                                                    } &redef ;
+	       global knock_medium_threshold_ports: set[port] = { 	17500/tcp,  # dropbox-lan-sync
+	                                                   		135/tcp, 139/tcp, 445/tcp,
+	                                                      		 0/tcp, 389/tcp, 88/tcp,
+	                                                      		 3268/tcp, 52311/tcp,
+	                                                   } &redef ;
 
-        #redef knock_high_threshold_ports += { 113/tcp, 636/tcp, 135/tcp, 139/tcp, 17500/tcp, 18457/tcp,
-        #                                3268/tcp, 3389/tcp, 3832/tcp, 389/tcp,
-        #                                4242/tcp, 443/tcp, 445/tcp, 52311/tcp, 5900/tcp,
-        #                                60244/tcp, 60697/tcp, 80/tcp, 8080/tcp, 7000/tcp, 8192/tcp,
-        #                                8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
-        #                                };
+	       #redef knock_high_threshold_ports += { 113/tcp, 636/tcp, 135/tcp, 139/tcp, 17500/tcp, 18457/tcp,
+	       #                                3268/tcp, 3389/tcp, 3832/tcp, 389/tcp,
+	       #                                4242/tcp, 443/tcp, 445/tcp, 52311/tcp, 5900/tcp,
+	       #                                60244/tcp, 60697/tcp, 80/tcp, 8080/tcp, 7000/tcp, 8192/tcp,
+	       #                                8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
+	       #                                };
 
 	# scan candidate 
 	global likely_scanner: table[addr,port] of set[addr] &read_expire=1 day ; ### &synchronized ; 
 	
 	global c_likely_scanner: table[addr,port] of opaque of cardinality
-                &default = function(a:addr, p:port): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
-		&read_expire=1 day  ; 
+	               &default = function(a:addr, p:port): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
+			&read_expire=1 day  ; 
 
 	global HIGH_THRESHOLD_LIMIT= 12 &redef ; 
 	global MED_THRESHOLD_LIMIT=5 &redef ;
@@ -64,18 +63,18 @@ export {
 	global COMMUTE_DISTANCE = 320 &redef ; 
 
 	# automated_exceptions using input-framework
-	#global ipportexclude_file  = "/usr/local/bro-cpp/common/feeds/knockknock.exceptions" &redef ;
 	global ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" &redef ;
 
-        type ipportexclude_Idx: record {
-                exclude_ip: addr;
-                exclude_port: port &type_column="t";
-        };
-        type ipportexclude_Val: record {
-                exclude_ip: addr;
-                exclude_port: port &type_column="t" ;
-                comment: string &optional ;
-        } ;
+	type ipportexclude_Idx: record {
+		exclude_ip: addr;
+	       	exclude_port: port &type_column="t";
+	};
+	
+	type ipportexclude_Val: record {
+		exclude_ip: addr;
+	       	exclude_port: port &type_column="t" ;
+	       	comment: string &optional ;
+	} ;
 
 	global ipportexclude: table[addr, port] of ipportexclude_Val = table() &redef  ; ### &synchronized ;
 	global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; #### &synchronized ; 
@@ -88,13 +87,12 @@ export {
 	global check_knockknock_scan: function(orig: addr, d_port: port, resp: addr): bool  ; 
 	global check_KnockKnockScan: function(cid: conn_id, established: bool, reverse: bool ): bool; 
 
-	global validate_KnockKnockScan: function (c: connection, darknet: bool ): string ; 
+	global filterate_KnockKnockScan: function (c: connection, darknet: bool ): string ; 
 }
 
 
 function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool 
 {
-
 	if (gather_statistics)
 		s_counters$c_knock_core += 1  ; 
 
@@ -104,103 +102,78 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 	local medium_threshold_flag=F; 
 	local usual_threshold_flag=F; 
 
-        # # # # # ## # # # # #
-        # code and heuristics of to determine if orig is inface a scanner
+	# # # # # ## # # # # #
+	# code and heuristics of to determine if orig is inface a scanner
 
 	# gather geoip distance
-        local orig_loc = lookup_location(orig);
-        local resp_loc = lookup_location(resp);
+	local orig_loc = lookup_location(orig);
+	local resp_loc = lookup_location(resp);
 
 	local distance = 0.0 ; 
-        #distance = get_haversine_distance(orig, resp);
+	#distance = haversine_distance_ip(orig, resp);
 
-        # if driving distance, we raise the block threshold
-        # 6 hours - covers tahoe and Yosemite from berkeley
-        if (distance < COMMUTE_DISTANCE )
-        {
-                high_threshold_flag =  F;
-        }
+	# if driving distance, we raise the block threshold
+	# 6 hours - covers tahoe and Yosemite from berkeley
+	if (distance < COMMUTE_DISTANCE )
+	{
+		high_threshold_flag =  F;
+	}
 
-        if (d_port !in concurrent_scanners_per_port)
-        {
-                concurrent_scanners_per_port[d_port]=set();
-        }
+	if (d_port !in concurrent_scanners_per_port)
+	{
+		concurrent_scanners_per_port[d_port]=set();
+	}
 
-        # stop populating the table if > 6 simultenious scanners
-        # are probing on the same port. IN this case we
-        # reduce the threshold to 3 faolures to block
-        if (|concurrent_scanners_per_port[d_port]| <=5) {
-                add concurrent_scanners_per_port[d_port][orig] ;
-        }
+	# stop populating the table if > 6 simultenious scanners
+	# are probing on the same port. IN this case we
+	# reduce the threshold to 3 faolures to block
+	if (|concurrent_scanners_per_port[d_port]| <=5) 
+	{
+		add concurrent_scanners_per_port[d_port][orig] ;
+	}
 
 
 	
-        # check if in knock_high_threshold_ports or rare port scan (too few concurrent scanners)
-        # notch up threshold ot high  - likewise for medium thresholds
+       # check if in knock_high_threshold_ports or rare port scan (too few concurrent scanners)
+       # notch up threshold ot high  - likewise for medium thresholds
 
-        if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
-        {       high_threshold_flag = T ; }
-        else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
-        {       medium_threshold_flag = T ;  }
+       if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
+       {       high_threshold_flag = T ; }
+       else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
+       {       medium_threshold_flag = T ;  }
 
 
-#	if (orig !in Scan::known_scanners) 
-#        {
-#                if (|likely_scanner[orig,d_port]| == HIGH_THRESHOLD_LIMIT && high_threshold_flag )
-#                {
-#			result = T ; 
-#                }
-#                else if (|likely_scanner[orig,d_port]| == MED_THRESHOLD_LIMIT && medium_threshold_flag )
-#                {
-#			result = T ; 
-#                }
-#                else if (|likely_scanner[orig,d_port]| >= LOW_THRESHOLD_LIMIT && !high_threshold_flag && !medium_threshold_flag)
-#                {
-#			result = T ; 
-#                }
-#	} 
-	
-	
-       if (orig !in Scan::known_scanners)
-        {
+	if (orig !in Scan::known_scanners)
+       	{
 		local d_val = double_to_count(hll_cardinality_estimate(c_likely_scanner[orig,d_port])) ; 
 
-                if (d_val == HIGH_THRESHOLD_LIMIT && high_threshold_flag )
-                {
-                       result = T ;
-                }
-                else if (d_val == MED_THRESHOLD_LIMIT && medium_threshold_flag )
-                {
-                       result = T ;
-                }
-                else if (d_val >= LOW_THRESHOLD_LIMIT && !high_threshold_flag && !medium_threshold_flag)
-                {
-                       result = T ;
-                }
-       }
+	       	if (d_val == HIGH_THRESHOLD_LIMIT && high_threshold_flag )
+		{
+		      result = T ;
+		}
+	       	else if (d_val == MED_THRESHOLD_LIMIT && medium_threshold_flag )
+		{
+			result = T ;
+		}
+	       	else if (d_val >= LOW_THRESHOLD_LIMIT && !high_threshold_flag && !medium_threshold_flag)
+	       	{
+			result = T ;
+		}
+      	}
 
-		if (result) 
-		{ 
+	if (result) 
+	{ 
 		# make sure there is country code
 		local cc =  orig_loc?$country_code ? orig_loc$country_code : "" ;
 
-               	# build list of hosts touched
+		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
 
-               	local hosts_probed ="" ;
+		NOTICE([$note=KnockKnockScan, $src=orig,
+				 $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+		log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
-               	#for (a in likely_scanner[orig,d_port])
-               	#	hosts_probed += fmt (" %s ", a);
+	} 
 
-		#local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles) on %s", orig, |likely_scanner[orig,d_port]|,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance, hosts_probed);
-		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles) on %s", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance, hosts_probed);
-                	NOTICE([$note=KnockKnockScan, $src=orig,
-                                  $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
-			log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
-
-			#### TODO: moved to check_scan_impl: 
-			#### Scan::add_to_known_scanners(orig, "KnockKnockScan"); 
-		} 
-        # # # # # ## # # # # #
 	return result ; 
 } 
 
@@ -213,11 +186,12 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 
 function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): bool 
 {
+	local result = F ; 
+
 	if (gather_statistics)	
 		s_counters$c_knock_checkscan += 1; 
 
-	## already validated connection 
-
+	## already filterated connection 
 	local orig = cid$orig_h ;
 	local resp = cid$resp_h ;
 	local d_port = cid$resp_p; 
@@ -227,25 +201,24 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 		return F;
 
 	# only worry about TCP connections
-        # we deal with udp and icmp scanners differently
-        
+	# we deal with udp and icmp scanners differently
+	       
 	if (get_port_transport_proto(cid$resp_p) != tcp)
-                         return F;
+		return F;
 
-	######## memory optimizations 
+	# memory optimizations 
 	if (enable_big_tables) 
 	{ 
 		if ([orig,d_port] !in likely_scanner)
 		{ 
 			likely_scanner[orig,d_port]=set(); 
 		} 
-
+		
 		if (resp !in likely_scanner[orig,d_port])
 		{ 
 			add likely_scanner[orig,d_port][resp];
 		} 
 	} 
-
 
 	if ([orig, d_port] !in c_likely_scanner)
 	{
@@ -255,47 +228,10 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 	
 	hll_cardinality_add(c_likely_scanner[orig,d_port], resp);	
 
-	local result = check_knockknock_scan(orig, d_port, resp); 
+	result = check_knockknock_scan(orig, d_port, resp); 
 
-	#### TODO: this should go down further into check-scan-impl.bro code 
-	if (result) 
-	{ 
-		# Important want ot make sure we update the detect_ts to nearest time of occurence 
-		###Scan::known_scanners[orig]$detect_ts = network_time(); 
-		####log_reporter(fmt("knockknock scanner detected at %s, %s on %s", orig, Scan::known_scanners[orig]$detect_ts, peer_description),0); 
-	
-		return T ; 
-	} 
-
-return F ; 
-
+	return result ; 
 }
-
-
-####### clusterizations 
-
-event udp_request(u: connection )
-{
-}
-
-event udp_reply (u: connection )
-{
-
-}
-
-function get_haversine_distance(orig: addr, resp: addr): double 
-{
-	local distance = 0.0 ;
-	
-	local orig_loc = lookup_location(orig);
-       	local resp_loc = lookup_location(resp);
-
-        #if (orig_loc?$latitude &&  orig_loc?$longitude &&  resp_loc?$latitude && resp_loc?$longitude)
-        #        { distance = haversine_distance(orig_loc$latitude, orig_loc$longitude, resp_loc$latitude, resp_loc$longitude);}
-
-	return distance ; 
-}
-	
 
 @if (! Cluster::is_enabled())
 event connection_state_remove(c: connection) 
@@ -305,24 +241,24 @@ event connection_state_remove(c: connection)
 }
 @endif 
 
-function validate_KnockKnockScan(c: connection, darknet: bool ): string 
+function filterate_KnockKnockScan(c: connection, darknet: bool ): string 
 { 
 
 
 	if (gather_statistics)	
-		s_counters$c_knock_validate += 1; 
+		s_counters$c_knock_filterate += 1; 
 
 	if (! activate_KnockKnockScan)
 		return ""; 
 
-        local orig = c$id$orig_h ;
-        local resp = c$id$resp_h ;
-        local d_port = c$id$resp_p ;
+	       local orig = c$id$orig_h ;
+	       local resp = c$id$resp_h ;
+	       local d_port = c$id$resp_p ;
 	local s_port = c$id$orig_p ; 
 	
 	# internal host scanning handled seperately 
-        if (Site::is_local_addr(c$id$orig_h))
-                return "";
+	       if (Site::is_local_addr(c$id$orig_h))
+	               return "";
 
 	###local darknet = Scan::is_darknet(c$id$resp_h); 
 
@@ -331,7 +267,7 @@ function validate_KnockKnockScan(c: connection, darknet: bool ): string
 		# only worry about TCP connections 	
 		# we deal with udp and icmp scanners differently 
 	        if (get_port_transport_proto(c$id$resp_p) != tcp)
-       		         return "";
+	      		         return "";
 
 		# a) full established conns not interesting 
 		if (c$resp$state == TCP_ESTABLISHED) 

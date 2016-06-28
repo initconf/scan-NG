@@ -148,13 +148,13 @@ function check_address_scan_thresholds (orig: addr, resp: addr, outbound: bool, 
 } 
 
 
-#### validate_AddresssScan runs on workers and does all the pre-filtering here
+#### filterate_AddresssScan runs on workers and does all the pre-filtering here
 
-function validate_AddressScan(c: connection, established: bool, reverse: bool): string 
+function filterate_AddressScan(c: connection, established: bool, reverse: bool): string 
 {
 
 	 if (gather_statistics)
-                s_counters$c_addressscan_validate += 1  ;
+                s_counters$c_addressscan_filterate += 1  ;
 
 	local id = c$id;
 
@@ -220,7 +220,7 @@ function validate_AddressScan(c: connection, established: bool, reverse: bool): 
 	if ( orig in ignored_scanners)
 		return "";
 
-	#### log_reporter(fmt("validate_AddressScan: %s, %s, %s", c$id, established, reverse),0); 
+	#### log_reporter(fmt("filterate_AddressScan: %s, %s, %s", c$id, established, reverse),0); 
 	
 	return "A" ; 
 } 

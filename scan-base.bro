@@ -309,6 +309,9 @@ function check_subnet_threshold(v: vector of count, idx: table[subnet] of count,
 function hot_subnet_check(ip: addr)
 {
 
+	if (known_scanners[ip]$detection == "BackscatterSeen")
+                return ;
+
 	 # check for subnet scanners
 	 local scanner_subnet = mask_addr(ip, 24) ;
 

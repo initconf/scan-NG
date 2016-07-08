@@ -14,6 +14,26 @@ redef Scan::activate_AddressScan = T;
 redef TRW::use_TRW_algorithm = T ; 
 #redef Scan::activate_PortScan = F ;
 
+########## Landmine configs
+### IMPORTANT: populate Site::subnet_feed for Landmine to work
+########
+
+
+redef Scan::landmine_thresh_trigger = 5 &redef;
+redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
+
+##### this is list of allocated subnets in your network
+##### landmine works on watching connections which are not in allocated subnets 
+##### file looks as follows (tab seperated) 
+### 	Example Header and 1st row of LBL-subnets.csv-LATEST_BRO 
+###	#fields Network Gateway Enclaves        Use
+###	128.3.2.0/24    128.3.2.1       LBL     Research group 
+
+@ifndef(Site::subnet_feed)
+@load site-subnets.bro
+@endif 
+
+redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 
 ##### Input files ################################################################# 
@@ -144,20 +164,4 @@ redef Scan::skip_dest_server_ports: set[addr, port] += {} ;
 redef Scan::shut_down_thresh  = 100 ; 
 redef Scan::suppress_UDP_scan_checks = T ; 
 
-########## Landmine configs
 
-redef Scan::landmine_thresh_trigger = 5 &redef;
-redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
-
-##### this is list of allocated subnets in your network
-##### landmine works on watching connections which are not in allocated subnets 
-##### file looks as follows (tab seperated) 
-### 	Example 
-###	#fields Network Gateway Enclaves        Use
-###	128.3.2.0/24    128.3.2.1       LBL     Research group 
-
-@ifndef(Site::subnet_feed)
-@load site-subnets.bro
-@endif 
-
-redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 

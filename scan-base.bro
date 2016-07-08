@@ -26,9 +26,9 @@ export {
                 };
 
         global known_scanners_inactive: function(t: table[addr] of scan_info , idx: addr): interval;
-        const known_scanners_read_expire: interval = 1 days ; # 20 mins ; 
+        const known_scanners_create_expire: interval = 6 hrs ; # 1 days ; # 20 mins ; 
 
-        global known_scanners: table[addr] of scan_info &read_expire=known_scanners_read_expire
+        global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 
 
 	type conn_info: record {
@@ -309,8 +309,10 @@ function check_subnet_threshold(v: vector of count, idx: table[subnet] of count,
 function hot_subnet_check(ip: addr)
 {
 
+
 	if (known_scanners[ip]$detection == "BackscatterSeen")
-                return ;
+		return ; 
+
 
 	 # check for subnet scanners
 	 local scanner_subnet = mask_addr(ip, 24) ;

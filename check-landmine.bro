@@ -218,8 +218,8 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 
 	if (|Site::subnet_table| < MIN_SUBNET_CHECK) 
 	{ 
-		local msg = fmt("Site::subnet_table is %d size which is below threshold. Deactivating LandMine Check", |Site::subnet_table|); 
-		event reporter_info(network_time(), msg, peer_description);
+		#local msg = fmt("Site::subnet_table is %d size which is below threshold. Deactivating LandMine Check", |Site::subnet_table|); 
+		#event reporter_info(network_time(), msg, peer_description);
 		return ""; 
 	} 
 

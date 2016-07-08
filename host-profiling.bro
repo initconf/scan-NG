@@ -41,8 +41,8 @@ function log_host_profiles(cid: conn_id)
 		
                 #for (s in host_profiles[cid$resp_h])
 		#{
-                #       info$services += fmt (" %s ", s);
-		#	##print fmt ("service is %s %s", cid$resp_h, s); 
+                #        info$services += fmt (" %s ", s);
+		#	#print fmt ("service is %s %s", cid$resp_h, s); 
 		#} 
 
 		info$peer = peer_description; 

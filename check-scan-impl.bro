@@ -124,11 +124,11 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 
 	### too expensive log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
 
-        #already identified as scanner no need to proceed further
+        #already identified as scanner no need to proceed further 
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
 	{ 
        		s_counters$check_scan_counter += 1;
-		log_reporter(fmt("inside check_scan_cache: known_scanners[%s], %s", orig, known_scanners[orig]),0); 
+		### log_reporter(fmt("inside check_scan_cache: known_scanners[%s], %s", orig, known_scanners[orig]),0); 
                 return;
 	} 
 

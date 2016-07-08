@@ -8,7 +8,7 @@ export {
 
 	#global enable_scan_summary= T &redef ; 
 
-	type log_state: enum { DETECT, ONGOING, EXPIRE, UPDATE, SUMMARY };
+	type log_state: enum { DETECT, ONGOING, EXPIRE, UPDATE, FINISH, SUMMARY };
 	
 	#### setting up logging for scan_summary.log 
 	redef enum Log::ID += { summary_LOG }; 
@@ -86,7 +86,7 @@ export {
 	global manager_update_scan_summary: function(idx: addr, stats: scan_stats) ; 
 	
 
-	const done_with_read_expire: interval = 20 secs  &redef ; 
+	const done_with_read_expire: interval = 20 mins  &redef ; 
 	global expire_done_with: function(t: table[addr] of Scan::scan_stats, idx: addr): interval ;
 	global done_with: table[addr] of scan_stats 
 					&read_expire=done_with_read_expire  
@@ -148,7 +148,7 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 	workers_update_scan_summary(idx); 
 	event Scan::w_m_update_scan_summary_stats(idx, t[idx]); 
 	
-	return 0 secs ; 
+	return 0 sec ; 
 
 @endif 
 
@@ -160,36 +160,44 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 
         log_reporter(fmt("Manager : scan_summary_inactive: scan_summary: detect_ts: %s, known_scanners: detect_ts: %s for %s", scan_summary[idx]$detect_ts, known_scanners[idx]$detect_ts, idx),5);
 
-        ### log to scan_summary report
-
-        #if (scan_summary[idx]$start_ts == 0.0 && scan_summary[idx]$end_ts == 0.0 )
-        #        return 0 secs ;
-        #else
-        
-
-	if (t[idx]$start_ts != 0.0) 	
-		log_scan_summary(t[idx], UPDATE);
-
         ### expire scan_summary entry
 
          #### convoluted expire
-               if (t[idx]$expire)
+               if (! t[idx]$expire)
                {
-                       log_reporter(fmt("expiring scan_summary 1 hrs  for %s", t[idx]),5);
-                       return 1 hrs ; 
-                       #return 3 mins ; 
-               }
+			### check if not a known_scanner anymore we delete from scan_summary else extend logging 
+			if (idx in known_scanners) 
+			{ 
+				#log_scan_summary(t[idx], UPDATE);
+				log_reporter(fmt("expiring scan_summary 1 mins  for %s", t[idx]),5);
+	
+				if (t[idx]$start_ts != 0.0) 	
+					log_scan_summary(t[idx], UPDATE);
+
+                       		return 1 hrs ; 
+			} 
+			else 	
+			{ 
+				log_scan_summary(t[idx], FINISH);
+
+				#if (t[idx]$start_ts != 0.0) 	
+				#	log_scan_summary(t[idx], FINISH);
+
+                       		t[idx]$expire = T ;
+				return 1 mins ; 
+			} 
+               	}
+		### we need to extend for a min since all managers/worker times of table creation aren't 
+		### quite synced so expire_function triggers at different times. 
                else
                {
-                       log_reporter(fmt("in expiring scan_summary for 30 sec section %s", t[idx]),5);
-                       t[idx]$expire = T ;
-                       return 60 secs ;
+			log_reporter(fmt("deleting scan_summary permanently for %s", t[idx]),5);
+			return 0 secs ;
                }
 @endif
 
-	### lets not just delete scan_summary table right now 
-	# return 1 hrs ; 
 
+	return 0 sec ; 
 } 
 
 #### This is an important function we need to get this right 
@@ -256,15 +264,17 @@ function workers_update_scan_summary(idx: addr)
 function log_scan_summary(ss: scan_stats, state: log_state) 
 {
 
-	log_reporter(fmt("log_scan_summary: %s", ss),5) ; 
+	#log_reporter(fmt("log_scan_summary: %s: state: %s", ss, state),5) ; 
 
 	local info: scan_stats_log ; 
 
-	local detect_ts = known_scanners[ss$scanner]$detect_ts  ; 
+	#### log_reporter(fmt("LSS: log_scan_summary: KS: %s, scan_summary: %s, ss: %s", known_scanners[ss$scanner], scan_summary[ss$scanner], ss),5) ; 
+
+	### ash local detect_ts = known_scanners[ss$scanner]$detect_ts  ; 
 	
 	### preserve detect_ts until scan_summary expires now 
 	if (ss$scanner in scan_summary)
-		scan_summary[ss$scanner]$detect_ts = detect_ts ; 
+		scan_summary[ss$scanner]$detect_ts = ss$detect_ts ; 
 	else 
 		log_reporter (fmt("ss$scanner not found in scan_summary : %s, %s", ss$scanner, ss),5); 
 
@@ -273,8 +283,8 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	info$state = state ; 
 	info$detection = ss$detection ; 
 	info$start_ts = state == DETECT ? table_start_ts[ss$scanner]$ts : ss$start_ts ;  
-	info$end_ts = state == DETECT ? detect_ts : ss$end_ts ; 
-	info$detect_ts = detect_ts ; 
+	info$end_ts = state == DETECT ? ss$detect_ts : ss$end_ts ; 
+	info$detect_ts = ss$detect_ts ; 
 	info$detect_latency = info$detect_ts - info$start_ts ;
 	info$total_conn = state == DETECT ? table_start_ts[ss$scanner]$conn_count : ss$total_conn ; 
 	info$total_hosts_scanned = state == DETECT ? table_start_ts[ss$scanner]$conn_count : double_to_count(hll_cardinality_estimate(ss$hosts)); #|ss$hosts| ; 
@@ -284,7 +294,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	info$distance = 0.0 ; 
 	info$event_peer = ss$event_peer ; 
 
-	log_reporter(fmt("log_scan_summary: info is : %s", info),5) ; 
+	#log_reporter(fmt("log_scan_summary: info is : %s", info),5) ; 
 
 	Log::write(Scan::summary_LOG, info); 
 } 
@@ -358,7 +368,7 @@ log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like 
 event Scan::w_m_update_scan_summary_stats(idx: addr, stats: scan_stats)
 {
 
-	log_reporter(fmt("scan-summary->w_m_update_scan_summary_stats got stats %s for %s", stats, idx),0); 
+	log_reporter(fmt("scan-summary->w_m_update_scan_summary_stats got stats %s for %s", stats, idx),5); 
 	manager_update_scan_summary(idx, stats); 
 
 }
@@ -367,9 +377,7 @@ event Scan::w_m_update_scan_summary_stats(idx: addr, stats: scan_stats)
 @if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event Scan::m_w_send_scan_summary_stats(scanner: addr, send_status: bool )
 {
-
 	return ; 
-
 } 
 
 @endif

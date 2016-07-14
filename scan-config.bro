@@ -14,26 +14,6 @@ redef Scan::activate_AddressScan = T;
 redef TRW::use_TRW_algorithm = T ; 
 #redef Scan::activate_PortScan = F ;
 
-########## Landmine configs
-### IMPORTANT: populate Site::subnet_feed for Landmine to work
-########
-
-
-redef Scan::landmine_thresh_trigger = 5 &redef;
-redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
-
-##### this is list of allocated subnets in your network
-##### landmine works on watching connections which are not in allocated subnets 
-##### file looks as follows (tab seperated) 
-### 	Example Header and 1st row of LBL-subnets.csv-LATEST_BRO 
-###	#fields Network Gateway Enclaves        Use
-###	128.3.2.0/24    128.3.2.1       LBL     Research group 
-
-@ifndef(Site::subnet_feed)
-@load site-subnets.bro
-@endif 
-
-redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 
 ##### Input files ################################################################# 
@@ -124,7 +104,19 @@ redef Scan::knock_high_threshold_ports += {
 ### Skip the following as since already blocked on border 
 ### affects entire Scan Detection 
 
+redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
+				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
+				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
+				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
+				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
+				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
+				631/tcp,
+                       };
+
 redef Scan::skip_services += { 23/tcp, }; 
+
+
+redef Scan::skip_services += { 123/tcp, } ;
 redef Scan::skip_services += { 111/tcp, } ; 
 
 
@@ -152,4 +144,20 @@ redef Scan::skip_dest_server_ports: set[addr, port] += {} ;
 redef Scan::shut_down_thresh  = 100 ; 
 redef Scan::suppress_UDP_scan_checks = T ; 
 
+########## Landmine configs
 
+redef Scan::landmine_thresh_trigger = 5 &redef;
+redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
+
+##### this is list of allocated subnets in your network
+##### landmine works on watching connections which are not in allocated subnets 
+##### file looks as follows (tab seperated) 
+### 	Example 
+###	#fields Network Gateway Enclaves        Use
+###	128.3.2.0/24    128.3.2.1       LBL     Research group 
+
+@ifndef(Site::subnet_feed)
+@load site-subnets.bro
+@endif 
+
+redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 

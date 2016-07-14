@@ -5,17 +5,12 @@ module History;
 export {
 	const DEBUG = 0 ; 
 
-	global tcp_outgoing_SF : opaque of bloomfilter ; #&persistent &synchronized; 
-	global tcp_conn_duration_bloom : opaque of bloomfilter ;# &persistent &synchronized; 
+	global tcp_outgoing_SF : opaque of bloomfilter ; 
+	global tcp_conn_duration_bloom : opaque of bloomfilter ;
 
-	global blocked_scanners : opaque of bloomfilter ; # &persistent ; 
-	global ever_touched : opaque of bloomfilter ; # &persistent ; 
+	global blocked_scanners : opaque of bloomfilter ; 
+	global ever_touched : opaque of bloomfilter ; 
 	global initialized_bloom: bool = F  &persistent ; 
-
-	redef Site::local_nets += {
-		128.3.0.0/16, 
-		131.243.0.0/16, 
-		}; 
 
 	redef enum Notice::Type += {
 	  SF_to_Scanner, # If ever a TCP_ESTABLISHED to the potential Scanner
@@ -67,14 +62,11 @@ event bro_init()
 	# so setting bloom to 40M 
 	# not yet measured what is overlap of 6.2M the next day
 	
-#	if (! initialized_bloom)
-#	{ 	
-		tcp_outgoing_SF = bloomfilter_basic_init(0.0000001, 40000000);
-		tcp_conn_duration_bloom= bloomfilter_basic_init(0.0000001, 40000000);
-		#tcp_outgoing_SF = bloomfilter_basic_init(0.0001, 400);
-		#tcp_conn_duration_bloom= bloomfilter_basic_init(0.0001, 400);
-	 	initialized_bloom = T ; 
-#	} 
+	tcp_outgoing_SF = bloomfilter_basic_init(0.0000001, 40000000);
+	tcp_conn_duration_bloom= bloomfilter_basic_init(0.0000001, 40000000);
+	#tcp_outgoing_SF = bloomfilter_basic_init(0.0001, 400);
+	#tcp_conn_duration_bloom= bloomfilter_basic_init(0.0001, 400);
+	initialized_bloom = T ; 
 }
 
 
@@ -102,13 +94,6 @@ function add_to_bloom(ip: addr)
 	
 }
 
-#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
-#event History::m_w_add(ip: addr)
-#        {
-#        log_reporter(fmt ("m_w_add: %s", ip), 0);
-#        }
-#@endif
-
 
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event History::w_m_new(ip: addr)
@@ -117,8 +102,6 @@ event History::w_m_new(ip: addr)
 	bloomfilter_add(tcp_outgoing_SF, ip);
 }
 @endif
-
-        
 
 
 # so that we have all the flags etc

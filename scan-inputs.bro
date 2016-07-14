@@ -2,7 +2,13 @@ module Scan;
 
 #redef exit_only_after_terminate = T ; 
 export {
+
+	global PURGE_ON_WHITELIST = T ; 
         
+	redef enum Notice::Type += {
+		WHITELIST_PURGE, 
+	}; 
+
 	const read_files: set[string] = {} &redef;
 
 	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
@@ -190,6 +196,18 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 		
 		whitelist_ip_table[ip]$ip = ip; 
 		whitelist_ip_table[ip]$comment= comment; 
+
+
+		if (PURGE_ON_WHITELIST)
+		{ 
+			if (ip in known_scanners)
+			{
+				local _msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
+				NOTICE([$note=WHITELIST_PURGE, $src=ip, $msg=fmt("%s", _msg)]);
+				delete known_scanners[ip] ; 
+			}
+
+		} 
         }
 
 event Scan::m_w_update_ip(ip: addr, comment: string)
@@ -206,7 +224,7 @@ event Scan::m_w_remove_ip(ip: addr, comment: string)
 
 
 event Scan::m_w_add_subnet(nets: subnet, comment: string)
-        {
+{
         log_reporter(fmt ("scan-inputs.bro: m_w_add_subnet: %s, %s", nets, comment), 0);
 		if (nets !in whitelist_subnet_table) 
 		{
@@ -216,7 +234,24 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 
 		whitelist_subnet_table[nets]$nets = nets; 
 		whitelist_subnet_table[nets]$comment = comment;
-	} 
+
+		if (PURGE_ON_WHITELIST)
+                {
+			for (ip in known_scanners)
+			{ 
+                        	if (ip in nets)
+				{
+
+                        		local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
+
+					NOTICE([$note=WHITELIST_PURGE, $src=ip,
+						$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+					delete known_scanners[ip] ;
+				} 
+			} 
+                }
+        
+} 
 
 
 event Scan::m_w_update_subnet(nets: subnet, comment: string)
@@ -246,7 +281,7 @@ event update_whitelist()
 		 Input::force_update("whitelist_subnet");
 	} 
 
-	### schedule 5 mins { update_whitelist() } ; 
+#	schedule 5 mins { update_whitelist() } ; 
 }
 
 
@@ -263,7 +298,7 @@ event read_whitelist()
 				$mode=Input::REREAD,$ev=read_whitelist_subnet]);
                 }
 
-	### schedule 1 mins { update_whitelist() } ; 
+	 schedule 1 mins { update_whitelist() } ; 
 }
 
 

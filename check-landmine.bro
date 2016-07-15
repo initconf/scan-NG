@@ -14,7 +14,6 @@ export
 
 	redef enum Notice::Type += {
                 LandMine,       # source touched a landmine destination
-                C_LandMine,       # source touched a landmine destination
 		LandMineSummary, # aggregate of landmine scanner
 
 	}; 
@@ -165,8 +164,8 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	if (d_val  > landmine_thresh_trigger)  
 	{	
 		msg=fmt ("Landmine hit by %s", orig); 
-		NOTICE([$note=C_LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
-		#add_to_known_scanners(orig, "C_LandMine");
+		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+		#add_to_known_scanners(orig, "LandMine");
 		#Scan::known_scanners[orig]$detect_ts=network_time(); 
 		#log_reporter(fmt("landmine scanner detected at %s, %s on %s", orig, Scan::known_scanners[orig]$detect_ts, peer_description),0);
 		return T ; 

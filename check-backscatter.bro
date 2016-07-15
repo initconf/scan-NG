@@ -20,7 +20,6 @@ export {
 	
         redef enum Notice::Type += {
                 BackscatterSeen,
-                C_BackscatterSeen,
 	} ; 
 
 	# Reverse (SYN-ack) scans seen from these ports are considered
@@ -75,7 +74,7 @@ function c_check_backscatter_thresholds(orig: addr, s_port: port, resp: addr): b
                         if (d_val >= BACKSCATTER_THRESH)
                         {
                                 #print fmt("CARDINAL: backscatter seen from %s (%d port: %s)", orig, |distinct_backscatter_peers[orig]|, s_port) ;
-				NOTICE([$note=C_BackscatterSeen, $src=orig,
+				NOTICE([$note=BackscatterSeen, $src=orig,
                                                 $p=s_port, $src_peer=get_local_event_peer(),
                                                 $msg=fmt("backscatter seen from %s (%d port: %s)",
                                                         orig, d_val, s_port)]);

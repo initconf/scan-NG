@@ -6,7 +6,6 @@ export {
 
 	redef enum Notice::Type += {
  		AddressScan,	# the source has scanned a number of addrs
- 		C_AddressScan,	# the source has scanned a number of addrs
                 ScanSummary,    # summary of scanning activity
 		ShutdownThresh,	# source reached shut_down_thresh
 	}; 
@@ -305,14 +304,14 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 
 	     if ( (d_val >= 19 && d_val <= 20)|| (d_val >= 29 && d_val <=30) || (d_val >= 99 && d_val <= 100) || (d_val >= 499 && d_val <= 500) || (d_val >= 999 && d_val <= 1000) || (d_val >= 1999 && d_val <=2000) || (d_val >= 4999 && d_val <= 5000) || (d_val >= 9999 && d_val <= 10000 ) || (d_val >= 19999 && d_val <= 20000 ) || (d_val >= 65535 && d_val <= 65536 ) || (d_val >= 99999 && d_val <= 100000) )				
 		{
-			log_reporter(fmt("C_AddressScan NOTICE %s has scanned %d hosts (%s)", orig, d_val, service),0); 
-                               NOTICE([$note=C_AddressScan,
+			log_reporter(fmt("AddressScan NOTICE %s has scanned %d hosts (%s)", orig, d_val, service),0); 
+                               NOTICE([$note=AddressScan,
                                        $src=orig, $p=service, $n=d_val,
                                        $src_peer=get_local_event_peer(),
                                        $msg=fmt("%s has scanned %d hosts (%s)", orig, d_val, service)]);
 
                                result = T ;
-                               #add_to_known_scanners(orig, "C_AddressScan");
+                               #add_to_known_scanners(orig, "AddressScan");
                                #Scan::known_scanners[orig]$detect_ts=network_time();
 		} 
 		#else 

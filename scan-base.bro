@@ -26,7 +26,7 @@ export {
                 };
 
         global known_scanners_inactive: function(t: table[addr] of scan_info , idx: addr): interval;
-        const known_scanners_create_expire: interval = 6 hrs ; # 1 days ; # 20 mins ; 
+        const known_scanners_create_expire: interval = 1 days ; # 20 mins ; 
 
         global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 

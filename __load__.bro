@@ -1,3 +1,5 @@
+redef exit_only_after_terminate=T ; 
+
 @load ./debug 
 @load ./site-subnets
 @load ./conn-history 
@@ -8,6 +10,8 @@
 
 @load ./scan-inputs    
 @load ./scan-summary 
+
+@load ./identify-web-spiders
 
 @load ./check-knock 
 @load ./check-backscatter

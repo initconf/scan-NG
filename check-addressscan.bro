@@ -17,14 +17,14 @@ export {
 
 	# Report a scan of peers at each of these points.
         const report_peer_scan: vector of count = {
-                2, 20, 30, 100, 1000, 10000, 50000, 100000, 250000, 500000, 1000000,
+                2, 20, 30, 100, 250, 500, 1000, 2500, 5000, 10000, 20000, 35000, 50000, 100000, 250000, 500000, 1000000,
                 #30, 100, 1000, 10000, 50000, 100000, 250000, 500000, 1000000,
         } &redef;
 
 
 
         const report_outbound_peer_scan: vector of count = {
-                2, 20, 30, 100, 1000, 10000,
+                2, 20, 30, 100, 500, 1000, 5000, 10000,
                 #30, 100, 1000, 10000,
         } &redef;
 
@@ -76,11 +76,6 @@ export {
         #global distinct_peers: table[addr] of opaque of cardinality
         #       &default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
         #        &read_expire = 1 day &expire_func=scan_sum &redef;
-
-
-
-
-
 
 }
 
@@ -154,6 +149,13 @@ function filterate_AddressScan(c: connection, established: bool, reverse: bool):
 
 	 if (gather_statistics)
                 s_counters$c_addressscan_filterate += 1  ;
+	
+	### only deal with tcp 
+	local trans = get_port_transport_proto(c$id$resp_p);
+
+
+	if ( trans != tcp ) 
+		return "" ; 
 
 	local id = c$id;
 
@@ -231,6 +233,12 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 	 if (gather_statistics)
                 s_counters$c_addressscan_checkscan += 1  ;
 
+
+	local trans = get_port_transport_proto(cid$orig_p);
+
+	if ( trans != tcp ) 
+		return F ; 
+
 	local id = cid;
 	local result = F ; 
 
@@ -278,16 +286,19 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 			
 				if (address_scan_result)
 				{
-					NOTICE([$note=AddressScan,
-						$src=orig, $p=service, $n=n,
-						$src_peer=get_local_event_peer(), 
-						$msg=fmt("%s has scanned %d hosts (%s)", orig, n, service)]);
+
+					# we block likely_server_port scanners at higher threshold than other ports) 
+					if ((service in likely_server_ports && n > 99) || (service !in likely_server_ports)) 
+					{ 
+						NOTICE([$note=AddressScan,
+							$src=orig, $p=service, $n=n,
+							$src_peer=get_local_event_peer(), 
+							$msg=fmt("%s has scanned %d hosts (%s)", orig, n, service)]);
 					 
 						log_reporter (fmt ("NOTICE: FOUND AddressScan: %s", orig),0);
 			
-					result = T ; 
-					#add_to_known_scanners(orig, "AddressScan");
-					#Scan::known_scanners[orig]$detect_ts=network_time();
+						result = T ; 
+					} 
 
 				} 	 
 			} 
@@ -301,10 +312,15 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 		hll_cardinality_add(c_distinct_peers[orig], resp);
 	
 		 local d_val = double_to_count(hll_cardinality_estimate(c_distinct_peers[orig])) ;
+				
+		address_scan_result = check_address_scan_thresholds(orig, resp, outbound, d_val); 	
 
-	     if ( (d_val >= 19 && d_val <= 20)|| (d_val >= 29 && d_val <=30) || (d_val >= 99 && d_val <= 100) || (d_val >= 499 && d_val <= 500) || (d_val >= 999 && d_val <= 1000) || (d_val >= 1999 && d_val <=2000) || (d_val >= 4999 && d_val <= 5000) || (d_val >= 9999 && d_val <= 10000 ) || (d_val >= 19999 && d_val <= 20000 ) || (d_val >= 65535 && d_val <= 65536 ) || (d_val >= 99999 && d_val <= 100000) )				
+	     #if ( (d_val >= 19 && d_val <= 20)|| (d_val >= 29 && d_val <=30) || (d_val >= 99 && d_val <= 100) || (d_val >= 499 && d_val <= 500) || (d_val >= 999 && d_val <= 1000) || (d_val >= 1999 && d_val <=2000) || (d_val >= 4999 && d_val <= 5000) || (d_val >= 9999 && d_val <= 10000 ) || (d_val >= 19999 && d_val <= 20000 ) || (d_val >= 65535 && d_val <= 65536 ) || (d_val >= 99999 && d_val <= 100000) )				
+		if (address_scan_result) 
 		{
-			log_reporter(fmt("AddressScan NOTICE %s has scanned %d hosts (%s)", orig, d_val, service),0); 
+			if ((service in likely_server_ports && d_val > 99) || (service !in likely_server_ports)) 
+			{ 
+				log_reporter(fmt("AddressScan NOTICE %s has scanned %d hosts (%s)", orig, d_val, service),0); 
                                NOTICE([$note=AddressScan,
                                        $src=orig, $p=service, $n=d_val,
                                        $src_peer=get_local_event_peer(),
@@ -313,9 +329,8 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
                                result = T ;
                                #add_to_known_scanners(orig, "AddressScan");
                                #Scan::known_scanners[orig]$detect_ts=network_time();
+			} 
 		} 
-		#else 
-		#	log_reporter(fmt ("d_val for orig: %s is %s", orig, d_val),0); 
 		
 
 		# Check for threshold if not outbound.

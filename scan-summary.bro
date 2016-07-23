@@ -27,7 +27,10 @@ export {
                 ### computed value no need to store
                	duration: interval &log &optional ;
                	scan_rate: double &log &optional ;
-                geoip_info: geo_location &log &optional;
+		country_code: string &log &optional ; 
+		region: string &log &optional ; 
+		city: string &log &optional ; 
+                #geoip_info: geo_location &log &optional;
                 distance: double &log &optional ;
 		event_peer: string &log &optional ; 
                 };
@@ -144,6 +147,11 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 
 ### may be was a bad idea below but now resorting to this 
 
+
+######### aashish 2016-07-22 fix 
+	if (idx !in known_scanners)
+		return 0 secs; 
+
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 	workers_update_scan_summary(idx); 
 	event Scan::w_m_update_scan_summary_stats(idx, t[idx]); 
@@ -158,8 +166,7 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
         #### update scan_summary table on the manager now
         #### based on all the data supplied by the workers
 
-        log_reporter(fmt("Manager : scan_summary_inactive: scan_summary: detect_ts: %s, known_scanners: detect_ts: %s for %s", scan_summary[idx]$detect_ts, known_scanners[idx]$detect_ts, idx),5);
-
+        #log_reporter(fmt("Manager : scan_summary_inactive: scan_summary: detect_ts: %s, known_scanners: detect_ts: %s for %s", scan_summary[idx]$detect_ts, known_scanners[idx]$detect_ts, idx),5);
         ### expire scan_summary entry
 
          #### convoluted expire
@@ -169,7 +176,7 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 			if (idx in known_scanners) 
 			{ 
 				#log_scan_summary(t[idx], UPDATE);
-				log_reporter(fmt("expiring scan_summary 1 mins  for %s", t[idx]),5);
+				#log_reporter(fmt("expiring scan_summary 1 mins  for %s", t[idx]),5);
 	
 				if (t[idx]$start_ts != 0.0) 	
 					log_scan_summary(t[idx], UPDATE);
@@ -191,7 +198,7 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 		### quite synced so expire_function triggers at different times. 
                else
                {
-			log_reporter(fmt("deleting scan_summary permanently for %s", t[idx]),5);
+			#log_reporter(fmt("deleting scan_summary permanently for %s", t[idx]),5);
 			return 0 secs ;
                }
 @endif
@@ -290,8 +297,14 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	info$total_hosts_scanned = state == DETECT ? table_start_ts[ss$scanner]$conn_count : double_to_count(hll_cardinality_estimate(ss$hosts)); #|ss$hosts| ; 
 	info$duration = info$end_ts - info$start_ts ; ### ss$end_ts - ss$start_ts ;
 	info$scan_rate = info$total_hosts_scanned == 0  ? 0 : interval_to_double(info$duration)/info$total_hosts_scanned ; 
-	info$geoip_info = lookup_location(ss$scanner) ;
-	info$distance = 0.0 ; 
+	local geoip_info = lookup_location(ss$scanner) ;
+
+
+	info$country_code=geoip_info$country_code ; 	
+	info$region = geoip_info?$region ? geoip_info$region : "" ; 
+	info$city = geoip_info?$city ? geoip_info$city : "" ; 
+ 
+	info$distance = haversine_distance_ip(128.3.0.0, ss$scanner) ; 
 	info$event_peer = ss$event_peer ; 
 
 	#log_reporter(fmt("log_scan_summary: info is : %s", info),5) ; 
@@ -312,15 +325,14 @@ function manager_update_scan_summary(idx: addr, stats: scan_stats)
 
 # [scanner=59.2.81.142, status=T, detection=<uninitialized>, start_ts=1461631108.377363, end_ts=1461631256.282214, detect_ts=0.0, total_conn=7, event_peer=worker-2]
 
-log_reporter(fmt ("done_with Got STATS w_m_update_scan_summary_stats %s, %s", idx, stats ),5);
-log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like  %s, %s", idx, scan_summary[idx]),5);
+#log_reporter(fmt ("done_with Got STATS w_m_update_scan_summary_stats %s, %s", idx, stats ),5);
+#log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like  %s, %s", idx, scan_summary[idx]),5);
 
         if (idx !in scan_summary)
         {
                 local ss: scan_stats;
                 Scan::scan_summary[idx] = ss ;
         }
-
 
 	if (idx in scan_summary)
 	{ 
@@ -360,7 +372,7 @@ log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like 
 	} 
 	 
 
-	log_reporter(fmt ("end scan_summary Got STATS manager scan_summary looks like  %s, %s", idx, scan_summary[idx]), 0);
+	### log_reporter(fmt ("end scan_summary Got STATS manager scan_summary looks like  %s, %s", idx, scan_summary[idx]), 0);
 
 }
 
@@ -368,8 +380,10 @@ log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like 
 event Scan::w_m_update_scan_summary_stats(idx: addr, stats: scan_stats)
 {
 
-	log_reporter(fmt("scan-summary->w_m_update_scan_summary_stats got stats %s for %s", stats, idx),5); 
-	manager_update_scan_summary(idx, stats); 
+	#log_reporter(fmt("scan-summary->w_m_update_scan_summary_stats got stats %s for %s", stats, idx),5); 
+
+	if (idx in known_scanners)
+		manager_update_scan_summary(idx, stats); 
 
 }
 @endif

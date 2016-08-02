@@ -2,22 +2,21 @@ module Scan;
 
 export {
 	global check_scan_cache: function (c: connection, established: bool, reverse: bool, filtrator: string) ;
-	#global add_to_known_scanners:function (orig: addr, detect: string);
-
-
-	global Scan::m_w_add_scanner: event (ss: scan_info) ; 
-	global Scan::w_m_new_scanner: event (ci: conn_info, established: bool, reverse: bool, filtrator: string); 
-	global Scan::m_w_update_scanner: event (ip: addr, status_flag: bool ); 
-	global Scan::w_m_update_scanner: event(ss: scan_info); 
-
 	global run_scan_detection: function(ci: conn_info, established: bool, reverse: bool, filtrator: string ): bool  ; 
+
+	#global Scan::m_w_add_scanner: event (ss: scan_info) ; 
+	#global Scan::w_m_new_scanner: event (ci: conn_info, established: bool, reverse: bool, filtrator: string); 
+	#global Scan::m_w_update_scanner: event (ip: addr, status_flag: bool ); 
+	#global Scan::w_m_update_scanner: event(ss: scan_info); 
+	#global Scan::m_w_remove_scanner: event (ip: addr) ; 
+
 } 
 
-@if ( Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
-redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
-@endif
+#@if ( Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
+#redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+#@endif
 
 
 ## Final function which calls various scan-detection heuristics, if activated 
@@ -43,8 +42,11 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	local orig=ci$cid$orig_h; 
 
 	local result = F ; 
-
-	if (Scan::activate_KnockKnockScan && /K/ in filtrator && check_KnockKnockScan(cid, established, reverse)) 
+	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
+	{
+		Scan::add_to_known_scanners(orig, "LandMine"); 
+	} 
+	else if (Scan::activate_KnockKnockScan && /K/ in filtrator && check_KnockKnockScan(cid, established, reverse)) 
 	{ 
 		Scan::add_to_known_scanners(orig, "KnockKnockScan"); 
 	} 
@@ -52,10 +54,6 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	{
 		#log_reporter (fmt("run_scan_detection: check_BackscatterSeen %s, %s", ci, filtrator),0); 
 		Scan::add_to_known_scanners(orig, "BackscatterSeen");	
-	} 
-	else if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
-	{
-		Scan::add_to_known_scanners(orig, "LandMine"); 
 	} 
 	else if (activate_AddressScan && /A/ in filtrator && check_AddressScan(cid, established, reverse)) 
 	{
@@ -109,6 +107,7 @@ function populate_table_start_ts(ci: conn_info)
 function check_scan_cache(c: connection, established: bool, reverse: bool, filtrator: string )
 {
 
+
 	if (gather_statistics)
 	{
        		s_counters$check_scan_cache += 1;
@@ -122,13 +121,13 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 	ci$cid = c$id ; 
 	ci$ts = c$start_time; 
 
-	### too expensive log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
+	# too expensive log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
 
         #already identified as scanner no need to proceed further 
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
 	{ 
        		s_counters$check_scan_counter += 1;
-		### log_reporter(fmt("inside check_scan_cache: known_scanners[%s], %s", orig, known_scanners[orig]),0); 
+		#log_reporter(fmt("inside check_scan_cache: known_scanners[%s], %s", orig, known_scanners[orig]),0); 
                 return;
 	} 
 
@@ -163,7 +162,7 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
        		s_counters$worker_to_manager_counter += 1;
 	}
 	
-	#### log_reporter(fmt("A in inside w_m_new_scanner: %s, %s", ci, filtrator),0); 
+	#log_reporter(fmt("A in inside w_m_new_scanner: %s, %s", ci, filtrator),0); 
 
 	local orig = ci$cid$orig_h ; 
 
@@ -200,7 +199,7 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_add_scanner (ss: scan_info) 
 {
-	#### log_reporter(fmt ("check-scan-impl: m_w_add_scanner: %s", ss$scanner), 0);
+	#log_reporter(fmt ("check-scan-impl: m_w_add_scanner: %s", ss$scanner), 0);
 
 	local orig = ss$scanner; 
 	local detection = ss$detection ; 
@@ -215,7 +214,7 @@ event Scan::m_w_add_scanner (ss: scan_info)
 event Scan::w_m_update_scanner(ss: scan_info) 
 {
 
-	log_reporter(fmt ("check-scan-impl: w_m_update_scanner: %s, %s", ss$scanner, ss$detection), 0);
+	#log_reporter(fmt ("check-scan-impl: w_m_update_scanner: %s, %s", ss$scanner, ss$detection), 0);
 	if ( ss$scanner !in Scan::known_scanners) 
 	{ 
 		Scan::add_to_known_scanners(ss$scanner, ss$detection); 
@@ -225,6 +224,37 @@ event Scan::w_m_update_scanner(ss: scan_info)
 	#### manager needs to inform other workers of this new scanner 
 
 	event Scan::m_w_add_scanner(ss); 
+} 
+
+@endif 
+
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+
+event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
+{ 
+
+	#log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s", ip, status_flag), 0);
+	
+	if (ip in known_scanners)
+	{ 
+		known_scanners[ip]$status = status_flag ; 
+	} 
+	else 
+		log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s NOT found in known_scanners - PROBLEM", ip, status_flag), 0);
+
+
+} 
+@endif 
+
+
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+event Scan::m_w_remove_scanner(ip: addr) 
+{
+	if (ip in known_scanners)
+	{ 
+		log_reporter(fmt("m_w_remove_scanner: %s", known_scanners[ip]),0); 
+		delete known_scanners[ip] ; 
+	} 
 } 
 @endif 
 
@@ -236,7 +266,7 @@ event Scan::w_m_update_scanner(ss: scan_info)
 ## detect: string - what kind of scan was it - knock, address, landmine, backscatter 
 function Scan::add_to_known_scanners(orig: addr, detect: string)
 {
-	#### log_reporter(fmt("function Scan::add_to_known_scanners: %s, %s", orig, detect),0); 
+	#log_reporter(fmt("function Scan::add_to_known_scanners: %s, %s", orig, detect),0); 
 
 	local new = F ; 
         if (orig !in Scan::known_scanners)
@@ -251,7 +281,7 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 		Scan::known_scanners[orig]$detect_ts = network_time(); 
                 Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
         
-		#### log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
+		#log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
 
 
 	###populate scan_summary 

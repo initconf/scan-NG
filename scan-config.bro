@@ -11,7 +11,7 @@ redef Scan::activate_BackscatterSeen = T ;
 redef Scan::activate_LandMine = T ;
 redef Scan::activate_LowPortTrolling = T ; 
 redef Scan::activate_AddressScan = T; 
-redef TRW::use_TRW_algorithm = T ; 
+redef TRW::use_TRW_algorithm = F ; 
 #redef Scan::activate_PortScan = F ;
 
 
@@ -32,19 +32,20 @@ redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
-##### Input files ################################################################# 
-#######  Whitelist IP and Subnets file 
+############################################################################################
+##### Input files - Whitelist IP and Subnets file 
 ### 	Example Header and 1st row - whitelist.scan 
 ###	#fields ip      comment
 ###	1.2.1.1       	a scanning ip addres
 ### 	Example Header and 1st row - subnet-whitelist.scan 
 ###	#fields nets    comment
 ###	15.5.5.5/32     NO scanning from EDU
+############################################################################################
 
-redef Scan::whitelist_ip_file = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" ; 
-redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" ; 
+redef Scan::whitelist_ip_file = "/BRO-feeds/ip-whitelist.scan" ; 
+redef Scan::whitelist_subnet_file = "/BRO-feeds/subnet-whitelist.scan" ; 
 
 
 ####### KnockKnockScan whitelist file 
@@ -54,10 +55,11 @@ redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan
 ###	#fields exclude_ip      exclude_port    t       comment
 ###	11.3.2.5  123	tcp     example comment 
 
-redef ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" ; 
+redef ipportexclude_file  = "/BRO-feeds/knockknock.exceptions" ; 
 
 
-########### scan-summary.bro config #######################################################
+############################################################################################
+########### scan-summary.bro config 
 ### Scan-summary: if T will enable generation of scan-summary.log which tracks 
 ### start_time, end_time, detect_time of a scan 
 ### duration of scan 
@@ -72,32 +74,12 @@ redef ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" ;
 redef enable_scan_summary = T  ; 
 
 
-################ These affect the entire scan detection ####################################
 
-# skip
-
-redef skip_services += { 111/tcp, } ; 
-
-redef skip_outbound_services += { 22/tcp, 3128/tcp, 80/tcp, 8080/tcp, } ; 
-
-redef skip_scan_sources += {
-	255.255.255.255,        # who knows why we see these, but we do
-} ; 
-
-redef skip_scan_nets += {}  ;
-
-# List of well known local server/ports to exclude for scanning
-# purposes.
-
-redef skip_dest_server_ports += {} ; 
-
-
-
-
-
-######## KnockKnockScan specific configurations ##############################################
+############################################################################################
+######## KnockKnockScan specific configurations 
 ### These are KnockKnockScan Specific tweaks only. These don't affect any other heuristics
 ### sensitive and sticky config ports
+############################################################################################
 
 
 redef Scan::knock_medium_threshold_ports += {
@@ -117,21 +99,39 @@ redef Scan::knock_high_threshold_ports += {
 					8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
 				};
 
+############################################################################################
+######### AddressScan 
+############################################################################################
+
+redef Scan::shut_down_thresh  = 100 ; 
+redef Scan::suppress_UDP_scan_checks = T ; 
 
 
-### Skip the following as since already blocked on border 
-### affects entire Scan Detection 
+############################################################################################
+################ These affect the entire scan detection ####################################
+############################################################################################
+
+# skip
+
+redef skip_services += { 111/tcp, } ; 
+
+redef skip_outbound_services += { 22/tcp, 3128/tcp, 80/tcp, 8080/tcp, } ; 
+
+redef skip_scan_sources += {
+	255.255.255.255,        # who knows why we see these, but we do
+} ; 
+
+redef skip_scan_nets += {}  ;
+
+# List of well known local server/ports to exclude for scanning
+# purposes.
+
+redef skip_dest_server_ports += {} ; 
 
 redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
-				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
-				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
-				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
-				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
-				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
-				631/tcp,
                        };
 
-redef Scan::skip_services += { 23/tcp, }; 
+redef Scan::skip_services += { 23/tcp, 445/tcp}; 
 
 
 redef Scan::skip_services += { 123/tcp, } ;
@@ -148,18 +148,14 @@ redef Scan::skip_scan_sources += {
 	255.255.255.255,        # who knows why we see these, but we do
         } &redef;
 
-redef Scan::skip_scan_nets  += {} ; 
+redef Scan::skip_scan_nets  += { } ; 
 
 
 
 # List of well known local server/ports to exclude for scanning purposes.
 redef Scan::skip_dest_server_ports: set[addr, port] += {} ; 
 
-
-
-######### AddressScan 
-
-redef Scan::shut_down_thresh  = 100 ; 
-redef Scan::suppress_UDP_scan_checks = T ; 
-
+redef Scan::never_drop_nets += { Site::neighbor_nets } ;
+redef can_drop_connectivity = T ; 
+redef dont_drop_locals = T &redef ;
 

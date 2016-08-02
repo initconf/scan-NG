@@ -44,7 +44,7 @@ export {
 
 	global worker_count  = 0 ; 
 
-	global stat_freq = 10 mins ; 
+	global stat_freq = 1 hrs ; 
 	global s_counters : scan_counters ; 
 
 	global aggregate_workers: table[string] of bool &default=F ; 
@@ -98,8 +98,9 @@ event Scan::m_w_send_performance_counters(send: bool)
 
 event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
-	#log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
-	#log_reporter(fmt("Got counters: %s", sc),0); 
+
+#	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
+	log_reporter(fmt("Got counters: %s", sc),0); 
 
 	
 
@@ -139,7 +140,7 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 
 	if (|aggregate_workers| == Cluster::worker_count ) 
 	{
-		#log_reporter(fmt("STATISTICS: %s", s_counters),0); 
+		log_reporter(fmt("STATISTICS: %s", s_counters),0); 
 	
 		### reset the worker reporting table again 
 		for (w in aggregate_workers) 
@@ -181,6 +182,7 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 
 	} 
 
+#	log_reporter(fmt ("II + inside w_m_update_performance_counters : %s", sc),0); 
 } 
 
 @endif 

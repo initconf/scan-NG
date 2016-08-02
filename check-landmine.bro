@@ -165,6 +165,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	{	
 		msg=fmt ("Landmine hit by %s", orig); 
 		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+		log_reporter (fmt ("NOTICE: FOUND LandMine : %s, %s", orig, network_time()),0);
 		#add_to_known_scanners(orig, "LandMine");
 		#Scan::known_scanners[orig]$detect_ts=network_time(); 
 		#log_reporter(fmt("landmine scanner detected at %s, %s on %s", orig, Scan::known_scanners[orig]$detect_ts, peer_description),0);
@@ -177,7 +178,6 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 
 function filterate_LandMineScan(c: connection, darknet: bool ): string 
 { 
-
 	 if (gather_statistics)
                 s_counters$c_land_filterate += 1  ;
 
@@ -187,20 +187,16 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 	local orig_p = c$id$orig_p ;
         local resp_p = c$id$resp_p ;
 
-
 	# prevent manager to keep firing events if already a scanner
-        if (orig in Scan::known_scanners)
-		if (Scan::known_scanners[orig]$status) 
-		{
+        if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
+	{
                 #local rmsg = fmt ("landmine: known_scanner T: for %s, %s, %s", orig, resp_p, resp);
                 #log_reporter(rmsg, 0);
 		return "" ;
-		}
-
+	}
 
 	if (! darknet) 
 	{ 
-
 		# limita tion - works good only for tcp with minimal false positive 
 		# for udp see  - udp-scan.bro 
 		
@@ -230,11 +226,11 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 
 	if (Site::is_local_addr(resp) && resp !in Site::subnet_table)
 	{
-		if ((is_failed(c) || is_reverse_failed(c) ) ) 
-		{ 
+		#if ((is_failed(c) || is_reverse_failed(c) ) ) 
+		#{ 
 			#add_to_landmine_cache(orig, resp_p, resp) ; 
 			return "L" ; 
-		}
+		#}
 	}
 
 	return ""; 

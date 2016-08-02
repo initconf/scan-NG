@@ -11,7 +11,7 @@ global check_scan: function (c: connection, established: bool, reverse: bool);
 
 } 
 
-global uid_table: table[string] of bool &create_expire=30 sec ;
+global uid_table: table[string] of bool &default=F &create_expire=5 mins ;
 
 event bro_init()
 { 
@@ -37,7 +37,7 @@ function is_catch_release_active(cid: conn_id): bool
         local bi: NetControl::BlockInfo ;
         bi = NetControl::get_catch_release_info(orig);
 
-	#### log_reporter(fmt("is_catch_release_active: blockinfo is %s, %s", cid, bi),0); 
+	#log_reporter(fmt("is_catch_release_active: blockinfo is %s, %s", cid, bi),0); 
         ### if record bi is initialized
         if (bi$watch_until != 0.0 ) 
                 return  T;
@@ -142,7 +142,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 		return ; 
 	} 
 
-	###log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),0);
+	#log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),0);
 
        	local resp = c$id$resp_h ;
 
@@ -156,6 +156,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
         {
 		darknet = T ; 
 
+		#print fmt ("DARKNET: %s, %s", c$uid, c$id);
 	 	if (gather_statistics)
                         s_counters$darknet_counter += 1;
 
@@ -188,25 +189,28 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	# detection heuristic, filteration for that heuristic is a F 
 	# only connections with T filteration are processed further to be analyzed 
 
-	if (activate_BackscatterSeen)
-	{
-		filter__Backscatter = Scan::filterate_BackscatterSeen(c, darknet);
-	} 
+	# (ii) we check against uid_table[c$uid] because if conn is already sent to manager
+	# based on earlier event (eg. conn_attempt) we save extra processing for subsiquent
+	# events (eg. conn_state_remove) 
 
-	if (activate_KnockKnockScan)
-			filter__KnockKnock = Scan::filterate_KnockKnockScan(c, darknet); 
-	
-	if (activate_LandMine)
+	# only check landmine if darknet ip 
+	if (activate_LandMine && ! uid_table[c$uid] && darknet )
+	{ 
 			filter__LandMine = Scan::filterate_LandMineScan(c, darknet ); 
+	} 
+	if (activate_BackscatterSeen && ! uid_table[c$uid])
+		filter__Backscatter = Scan::filterate_BackscatterSeen(c, darknet);
 
-	if (activate_AddressScan)
+	if (activate_KnockKnockScan && ! uid_table[c$uid])
+			filter__KnockKnock = Scan::filterate_KnockKnockScan(c, darknet); 
+
+	if (activate_AddressScan && ! uid_table[c$uid])
 		filter__AddressScan = Scan::filterate_AddressScan(c, established, reverse); 
 	
-	if (activate_LowPortTrolling)
+	if (activate_LowPortTrolling && ! uid_table[c$uid] )
 		filter__LowPortTroll = Scan::filterate_LowPortTroll(c, established, reverse); 
 
 
-	
 	# we hold off on PortScan to use the heuristics provided by sumstats 	
 	# if (activate_PortScan)
   	#	filter__PortScan = Scan::filterate_PortScan(c, established, reverse) ; 
@@ -236,6 +240,8 @@ function check_scan(c: connection, established: bool, reverse: bool)
 ### speed up landmine and knockknock for darknet space 
 event new_connection(c: connection)
 {
+
+	#print fmt ("new_connection"); 
 	### for new connections we just want to supply C and only for darknet spaces 
 	### to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
 
@@ -255,12 +261,16 @@ event new_connection(c: connection)
 
 event connection_state_remove(c: connection)
 {
+	#print fmt ("connection_state_remove"); 
 	check_scan(c, F, F); 
 }
 
 
 event connection_established(c: connection)
        {
+
+	#print fmt("connection_established"); 
+
        local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
        Scan::check_scan(c, T, is_reverse_scan);
 
@@ -271,11 +281,15 @@ event connection_established(c: connection)
 
 event partial_connection(c: connection)
        {
+	#print fmt("partial_connection"); 
+
        Scan::check_scan(c, T, F);
        }
 
 event connection_attempt(c: connection)
        {
+	#print fmt("connection_attempt"); 
+
     local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
        Scan::check_scan(c, F, is_reverse_scan);
 
@@ -286,12 +300,18 @@ event connection_attempt(c: connection)
 
 event connection_half_finished(c: connection)
        {
+
+	#print fmt ("conn_half_finished"); 
+
        # Half connections never were "established", so do scan-checking here.
        Scan::check_scan(c, F, F);
        }
 
 event connection_rejected(c: connection)
        {
+
+	#print fmt("conn_rejected"); 
+
        local is_reverse_scan = (c$orig$state == TCP_RESET && c$id$resp_p !in likely_server_ports);
 
        Scan::check_scan(c, F, is_reverse_scan);
@@ -303,6 +323,9 @@ event connection_rejected(c: connection)
 
 event connection_reset(c: connection)
        {
+
+	#print fmt("conn_reset"); 
+
        if ( c$orig$state == TCP_INACTIVE || c$resp$state == TCP_INACTIVE )
         {
         local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
@@ -313,6 +336,9 @@ event connection_reset(c: connection)
 
 event connection_pending(c: connection)
        {
+	
+	#print fmt ("conn_pending") ; 
+
        if ( c$orig$state == TCP_PARTIAL && c$resp$state == TCP_INACTIVE )
                Scan::check_scan(c, F, F);
        }

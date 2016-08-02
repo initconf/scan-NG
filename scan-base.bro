@@ -1,5 +1,6 @@
 module Scan;
 
+
 export {
 	
 	global Scan::add_to_known_scanners: function(orig: addr, detect: string); 
@@ -25,11 +26,27 @@ export {
                         expire: bool &default = F ;
                 };
 
+
+	# we let only the manager manage deletion of the known_scanners on the worker 
+	# Reason: (i) we don't know separate timers for workers and managers for a scanner 
+	# (ii) unexpected absence of known_scanners can cause values to be wrong in scan_summary
+
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
+
         global known_scanners_inactive: function(t: table[addr] of scan_info , idx: addr): interval;
+
         const known_scanners_create_expire: interval = 1 days ; # 20 mins ; 
 
         global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 
+@endif 
+
+	### workers will keep known_scanners until manager sends m_w_remove_scanner event 
+	### when manager calls known_scanners_inactive event 
+
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+        global known_scanners: table[addr] of scan_info ; 
+@endif 
 
 	type conn_info: record {
 		cid: conn_id ; 
@@ -88,7 +105,36 @@ export {
 	global hot_subnet_check:function(ip: addr); 
 	global check_subnet_threshold: function (v: vector of count, idx: table[subnet] of count, orig: subnet, n: count):bool ; 
 
+	const never_drop_nets: set[subnet] &redef; 
+	global dont_drop: function(a: addr): bool ; 
+	global can_drop_connectivity = F &redef ; 
+	global dont_drop_locals = T &redef ; 
+
+
 }  #### end of export 
+
+
+export {
+
+        global Scan::m_w_add_scanner: event (ss: scan_info) ;
+        global Scan::w_m_new_scanner: event (ci: conn_info, established: bool, reverse: bool, filtrator: string);
+        global Scan::m_w_update_scanner: event (ip: addr, status_flag: bool );
+        global Scan::w_m_update_scanner: event(ss: scan_info);
+        global Scan::m_w_remove_scanner: event (ip: addr) ;
+}
+
+@if ( Cluster::is_enabled() )
+@load base/frameworks/cluster
+redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
+redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+@endif
+
+
+
+function dont_drop(a: addr) : bool
+{
+        return ! can_drop_connectivity || a in never_drop_nets || (dont_drop_locals && Site::is_local_addr(a));
+}
 
 
 function is_darknet(ip: addr): bool
@@ -122,13 +168,14 @@ function is_darknet(ip: addr): bool
 function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interval
 {
 	log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
-        #return 1 mins;
 	
-	### TODO: determine what we shall do when a known_scanners expire 	
+	### sending message to all workers to delete this scanner 
+	### since its inactive now 
 
-	#if (idx in scan_summary)
-	#	delete scan_summary[idx] ; 
-		
+	event Scan::m_w_remove_scanner(idx); 
+
+	### delete from the manager too 
+
 	return 0 secs ; 
 } 
 
@@ -308,7 +355,6 @@ function check_subnet_threshold(v: vector of count, idx: table[subnet] of count,
 
 function hot_subnet_check(ip: addr)
 {
-
 
 	if (known_scanners[ip]$detection == "BackscatterSeen")
 		return ; 

@@ -9,6 +9,24 @@ event NetControl::rule_expire(r: Rule, p: PluginState) &priority=-5
 	#Scan::log_reporter(fmt ("acld_rule_expire: Rule: %s", subnet_to_addr(r$entity$ip)),1); 
         }
 
+event NetControl::catch_release_forgotten (a: addr, bi: BlockInfo)
+{
+	#Scan::log_reporter(fmt("netcontrol: catoch_release_forgotten: %s: %s", a, bi),0);
+
+	### re-enabling scan-detection once netcontrol block is removed
+        if (a in Scan::known_scanners)
+        {
+                Scan::known_scanners[a]$status = F ;
+                ### send the status to all workers ;
+                event Scan::m_w_update_scanner(a, F );
+                Scan::log_reporter(fmt ("netcontro: catch_release_forgotten: m_w_update_scanner: F %s", a),1);
+        }
+        else
+                Scan::log_reporter(fmt ("netcontro: IP !in known_scanners: %s", a),1) ;
+
+
+}
+
 event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &priority=5
         {
 	 local ip = subnet_to_addr(r$entity$ip) ; 
@@ -37,15 +55,15 @@ event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="")
 	###	Scan::log_reporter(fmt ("netcontro: acld_remove: m_w_send_known_scan_stats: %s", subnet_to_addr(r$entity$ip)),1);
 
 	### re-enabling scan-detection once netcontrol block is removed 
-	if (ip in Scan::known_scanners) 
-	{ 	
-		Scan::known_scanners[ip]$status = F ; 
-		### send the status to all workers ;  
-		event Scan::m_w_update_scanner(ip, F ); 
-		Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: F %s", ip),1);
-	} 
-	else 	
-		Scan::log_reporter(fmt ("netcontro: IP !in known_scanners: %s", ip),1) ; 
+#	if (ip in Scan::known_scanners) 
+#	{ 	
+#		Scan::known_scanners[ip]$status = F ; 
+#		### send the status to all workers ;  
+#		event Scan::m_w_update_scanner(ip, F ); 
+#		Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: F %s", ip),1);
+#	} 
+#	else 	
+#		Scan::log_reporter(fmt ("netcontro: IP !in known_scanners: %s", ip),1) ; 
 
         }
 

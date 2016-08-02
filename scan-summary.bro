@@ -70,13 +70,15 @@ export {
 			detect_count: count &log &optional &default=0; 
                 };
 
+	const scan_summary_read_expire: interval =  60 mins &redef ; 
+
         global scan_summary_inactive: function(t: table[addr] of scan_stats, idx: addr): interval;
 
-	const scan_summary_read_expire: interval = 1 hrs ; # 3 mins &redef ; 
-
         global scan_summary: table[addr] of scan_stats &create_expire=scan_summary_read_expire
-                                &expire_func=scan_summary_inactive ; ### &synchronized ;
-
+                                &expire_func=scan_summary_inactive ; 
+	
+	const scan_summary_update_interval: interval =  60 mins &redef ; 
+	const scan_summary_finish_interval: interval =  1 mins &redef ; 
 
 	#########
 
@@ -88,12 +90,6 @@ export {
 	global workers_update_scan_summary: function(idx: addr); 
 	global manager_update_scan_summary: function(idx: addr, stats: scan_stats) ; 
 	
-
-	const done_with_read_expire: interval = 20 mins  &redef ; 
-	global expire_done_with: function(t: table[addr] of Scan::scan_stats, idx: addr): interval ;
-	global done_with: table[addr] of scan_stats 
-					&read_expire=done_with_read_expire  
-					&expire_func=expire_done_with;		
 
 	global log_scan_summary:function (ss: scan_stats, state: log_state) ; 
 } 
@@ -147,11 +143,6 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 
 ### may be was a bad idea below but now resorting to this 
 
-
-######### aashish 2016-07-22 fix 
-	if (idx !in known_scanners)
-		return 0 secs; 
-
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 	workers_update_scan_summary(idx); 
 	event Scan::w_m_update_scan_summary_stats(idx, t[idx]); 
@@ -175,13 +166,12 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 			### check if not a known_scanner anymore we delete from scan_summary else extend logging 
 			if (idx in known_scanners) 
 			{ 
-				#log_scan_summary(t[idx], UPDATE);
 				#log_reporter(fmt("expiring scan_summary 1 mins  for %s", t[idx]),5);
 	
 				if (t[idx]$start_ts != 0.0) 	
 					log_scan_summary(t[idx], UPDATE);
 
-                       		return 1 hrs ; 
+                       		return scan_summary_update_interval ; ### 60 mins 
 			} 
 			else 	
 			{ 
@@ -191,7 +181,7 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 				#	log_scan_summary(t[idx], FINISH);
 
                        		t[idx]$expire = T ;
-				return 1 mins ; 
+				return scan_summary_finish_interval ; ### 1 mins ; 
 			} 
                	}
 		### we need to extend for a min since all managers/worker times of table creation aren't 
@@ -304,7 +294,9 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	info$region = geoip_info?$region ? geoip_info$region : "" ; 
 	info$city = geoip_info?$city ? geoip_info$city : "" ; 
  
+	info$distance = 0 ; 
 	info$distance = haversine_distance_ip(128.3.0.0, ss$scanner) ; 
+
 	info$event_peer = ss$event_peer ; 
 
 	#log_reporter(fmt("log_scan_summary: info is : %s", info),5) ; 
@@ -325,7 +317,7 @@ function manager_update_scan_summary(idx: addr, stats: scan_stats)
 
 # [scanner=59.2.81.142, status=T, detection=<uninitialized>, start_ts=1461631108.377363, end_ts=1461631256.282214, detect_ts=0.0, total_conn=7, event_peer=worker-2]
 
-#log_reporter(fmt ("done_with Got STATS w_m_update_scan_summary_stats %s, %s", idx, stats ),5);
+#log_reporter(fmt ("Got STATS w_m_update_scan_summary_stats %s, %s", idx, stats ),5);
 #log_reporter(fmt ("begin scan_summary Got STATS manager scan_summary looks like  %s, %s", idx, scan_summary[idx]),5);
 
         if (idx !in scan_summary)

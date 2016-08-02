@@ -2,6 +2,11 @@ module Scan;
 
 export {
 
+	 redef enum Notice::Type += {
+                WebCrawler, 
+        };
+
+
 	global ok_web_bots: pattern = /bot|spider\.html|baidu/ ; 
 	global ok_robots: pattern = /robots\.txt/; 
 } 
@@ -14,21 +19,14 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 		local orig=c$id$orig_h ; 
 	    	#print fmt ("IP: %s, method: %s, original_URI: %s, unescaped_URI: %s, version: %s", orig, method, original_URI, unescaped_URI, version); 
 		if (orig !in Scan::whitelist_ip_table) 
-		{ 
-			event Scan::m_w_add_ip(orig, fmt("web-spider seeking %s", original_URI)); 
+		{
+			local _msg = fmt("web-spider seeking %s", original_URI) ; 
+			NOTICE([$note=WebCrawler, $src=orig, $msg=fmt("%s", _msg)]);
+                        
+			event Scan::m_w_add_ip(orig, _msg); 
 		} 
 	}
 } 
-
-
-# Process the response code from the server
-event http_reply(c: connection, version: string, code: count, reason: string)
-{
-
-    #print fmt ("version: %s, code: %s, reason: %s", version, code, reason); 
-	
-} 
-
 
 event http_header(c: connection, is_orig: bool, name: string, value: string) &priority=2
 {
@@ -40,7 +38,9 @@ event http_header(c: connection, is_orig: bool, name: string, value: string) &pr
 			local orig=c$id$orig_h ; 
 			if (orig !in Scan::whitelist_ip_table) 
 			{ 
-				event Scan::m_w_add_ip(orig, fmt ("%s crawler is seen: %s", orig, value)); 
+				local _msg = fmt ("%s crawler is seen: %s", orig, value); 
+				NOTICE([$note=WebCrawler, $src=orig, $msg=fmt("%s", _msg)]);
+				event Scan::m_w_add_ip(orig, _msg) ; 
 			} 
 		} 
 } 

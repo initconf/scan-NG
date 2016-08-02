@@ -1,3 +1,5 @@
+#redef exit_only_after_terminate=T ; 
+
 @load ./debug 
 @load ./site-subnets
 @load ./conn-history 

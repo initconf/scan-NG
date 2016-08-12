@@ -110,13 +110,13 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 	local resp_loc = lookup_location(resp);
 
 	local distance = 0.0 ; 
-	#distance = haversine_distance_ip(orig, resp);
+	distance = haversine_distance_ip(orig, resp);
 
 	# if driving distance, we raise the block threshold
 	# 6 hours - covers tahoe and Yosemite from berkeley
 	if (distance < COMMUTE_DISTANCE )
 	{
-		high_threshold_flag =  F;
+		high_threshold_flag =  T;
 	}
 
 	if (d_port !in concurrent_scanners_per_port)

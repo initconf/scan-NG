@@ -19,9 +19,9 @@ export {
 
 	const read_files: set[string] = {} &redef;
 
-	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/test/ip-whitelist.scan" &redef ; 
-	global whitelist_subnet_file:  string = "/YURT/feeds/BRO-feeds/test/subnet-whitelist.scan" &redef ; 
-	global blacklist_feeds: string =  "/YURT/feeds/BRO-feeds/test/blacklist.scan"  &redef ; 
+	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
+	global whitelist_subnet_file:  string = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
+	global blacklist_feeds: string =  "/YURT/feeds/BRO-feeds/blacklist.scan"  &redef ; 
 
         redef enum Notice::Type += {
                 Whitelist, 

@@ -19,7 +19,12 @@ redef TRW::use_TRW_algorithm = F ;
 ####  if subnet_feed is empty then LandMine detection wont work 
 
 redef Scan::landmine_thresh_trigger = 5 &redef;
-redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
+redef Scan::landmine_ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
+
+redef Scan::allow_icmp_landmine_check = T ;
+redef Scan::ignore_landmine_ports: set[port] = { 8/icmp } &redef ;
+
+# 8/icmp as d_port == backscatter from DoS
 
 ##### this is list of allocated subnets in your network
 ##### landmine works on watching connections which are not in allocated subnets 
@@ -32,7 +37,7 @@ redef Scan::ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 ############################################################################################
 ##### Input files - Whitelist IP and Subnets file 
@@ -44,8 +49,8 @@ redef Site::subnet_feed="/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ;
 ###	15.5.5.5/32     NO scanning from EDU
 ############################################################################################
 
-redef Scan::whitelist_ip_file = "/BRO-feeds/ip-whitelist.scan" ; 
-redef Scan::whitelist_subnet_file = "/BRO-feeds/subnet-whitelist.scan" ; 
+redef Scan::whitelist_ip_file = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" ; 
+redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" ; 
 
 
 ####### KnockKnockScan whitelist file 
@@ -55,7 +60,7 @@ redef Scan::whitelist_subnet_file = "/BRO-feeds/subnet-whitelist.scan" ;
 ###	#fields exclude_ip      exclude_port    t       comment
 ###	11.3.2.5  123	tcp     example comment 
 
-redef ipportexclude_file  = "/BRO-feeds/knockknock.exceptions" ; 
+redef ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" ; 
 
 
 ############################################################################################
@@ -129,6 +134,12 @@ redef skip_scan_nets += {}  ;
 redef skip_dest_server_ports += {} ; 
 
 redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
+				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
+				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
+				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
+				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
+				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
+				631/tcp,
                        };
 
 redef Scan::skip_services += { 23/tcp, 445/tcp}; 

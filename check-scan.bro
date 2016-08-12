@@ -110,7 +110,7 @@ function not_scanner(cid: conn_id): bool
 
 	# ignore traffic to host/port  this is primarily whitelisting
         # maintained in ipportexclude_file for sticky config firewalled hosts
-        if (resp in Site::local_nets && [resp, d_port] in ipportexclude)
+        if (resp in Site::local_nets && [resp, service] in ipportexclude)
         {       return T;  }
 
 	return result ; 

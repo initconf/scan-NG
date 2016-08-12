@@ -108,6 +108,11 @@ function not_scanner(cid: conn_id): bool
 	if (service >= 0/udp && service <= 65535/udp) 
 		return T; 
 
+	# ignore traffic to host/port  this is primarily whitelisting
+        # maintained in ipportexclude_file for sticky config firewalled hosts
+        if (resp in Site::local_nets && [resp, d_port] in ipportexclude)
+        {       return T;  }
+
 	return result ; 
 } 
 

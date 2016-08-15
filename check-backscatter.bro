@@ -203,6 +203,9 @@ function filterate_BackscatterSeen(c: connection, darknet: bool ): string
         local resp = c$id$resp_h ;
         local d_port = c$id$resp_p ;
         local s_port = c$id$orig_p ;
+	
+	#if (get_port_transport_proto(c$id$resp_p) == icmp && c$id$resp_p == 8/icmp)
+        #        return "B" ;
 
         if (get_port_transport_proto(c$id$resp_p) != tcp)
                 return "";

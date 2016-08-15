@@ -52,9 +52,9 @@ export {
 	# scan candidate 
 	global likely_scanner: table[addr,port] of set[addr] &read_expire=1 day ; ### &synchronized ; 
 	
-	global c_likely_scanner: table[addr,port] of opaque of cardinality
-	               &default = function(a:addr, p:port): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
-			&read_expire=1 day  ; 
+	#global c_likely_scanner: table[addr,port] of opaque of cardinality
+	#               &default = function(a:addr, p:port): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
+	#		&read_expire=1 day  ; 
 
 	global HIGH_THRESHOLD_LIMIT= 12 &redef ; 
 	global MED_THRESHOLD_LIMIT=5 &redef ;
@@ -145,7 +145,9 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 
 	if (orig !in Scan::known_scanners)
        	{
-		local d_val = double_to_count(hll_cardinality_estimate(c_likely_scanner[orig,d_port])) ; 
+		#local d_val = double_to_count(hll_cardinality_estimate(c_likely_scanner[orig,d_port])) ; 
+
+		local d_val = |likely_scanner[orig,d_port]| ; 
 
 	       	if (d_val == HIGH_THRESHOLD_LIMIT && high_threshold_flag )
 		{
@@ -166,7 +168,12 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		# make sure there is country code
 		local cc =  orig_loc?$country_code ? orig_loc$country_code : "" ;
 
-		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
+		local ips = "" ; 
+
+		for (ip in likely_scanner[orig, d_port])
+			ips += fmt (" %s ", ip); 
+			
+		local _msg = fmt("%s scanned a total of %d hosts: [%s - %s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, ips, |concurrent_scanners_per_port[d_port]|, cc, distance);
 
 		NOTICE([$note=KnockKnockScan, $src=orig,
 				 $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
@@ -207,26 +214,28 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 		return F;
 
 	# memory optimizations 
-	if (enable_big_tables) 
-	{ 
-		if ([orig,d_port] !in likely_scanner)
-		{ 
-			likely_scanner[orig,d_port]=set(); 
-		} 
-		
-		if (resp !in likely_scanner[orig,d_port])
-		{ 
-			add likely_scanner[orig,d_port][resp];
-		} 
-	} 
 
-	if ([orig, d_port] !in c_likely_scanner)
-	{
-		local cp: opaque of cardinality = hll_cardinality_init(0.1, 0.99); 
-		c_likely_scanner[orig,d_port]=cp  ; 
+	if ([orig,d_port] !in likely_scanner)
+	{ 
+		likely_scanner[orig,d_port]=set(); 
 	} 
 	
-	hll_cardinality_add(c_likely_scanner[orig,d_port], resp);	
+	if (resp !in likely_scanner[orig,d_port])
+	{ 
+		add likely_scanner[orig,d_port][resp];
+	} 
+
+#	if (enable_big_tables) 
+#	{ 
+#		if ([orig, d_port] !in c_likely_scanner)
+#		{
+#			local cp: opaque of cardinality = hll_cardinality_init(0.1, 0.99); 
+#			c_likely_scanner[orig,d_port]=cp  ; 
+#		} 
+#		
+#		hll_cardinality_add(c_likely_scanner[orig,d_port], resp);	
+#
+#	} 
 
 	result = check_knockknock_scan(orig, d_port, resp); 
 

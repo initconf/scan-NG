@@ -19,9 +19,9 @@ export {
 
 	const read_files: set[string] = {} &redef;
 
-	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
-	global whitelist_subnet_file:  string = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
-	global blacklist_feeds: string =  "/YURT/feeds/BRO-feeds/blacklist.scan"  &redef ; 
+	global whitelist_ip_file:  string = fmt("%s/feeds/ip-whitelist.scan",@DIR) &redef ; 
+	global whitelist_subnet_file:  string = fmt("%s/feeds/subnet-whitelist.scan",@DIR)  &redef ; 
+	global blacklist_feeds: string &redef ; 
 
         redef enum Notice::Type += {
                 Whitelist, 
@@ -234,7 +234,7 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 				delete known_scanners[ip] ; 
 
 				@ifdef (NetControl::unblock_address_catch_release) 
-					NetControl::unblock_address_catch_release(ip); 
+					NetControl::unblock_address_catch_release(ip, _msg); 
 				@endif 
 			}
 
@@ -280,7 +280,7 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 					delete known_scanners[ip] ;
 	
 					@ifdef (NetControl::unblock_address_catch_release) 
-						NetControl::unblock_address_catch_release(ip); 
+						NetControl::unblock_address_catch_release(ip, _msg); 
 					@endif 
 				} 
 			} 
@@ -304,7 +304,7 @@ event Scan::m_w_remove_subnet(nets: subnet, comment: string)
 
 event update_whitelist()
 {
-        ##log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
+        #log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
 	#print fmt("%s", whitelist_ip_table); 
 
 	Input::force_update("whitelist_ip");

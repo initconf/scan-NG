@@ -42,7 +42,6 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	local orig=ci$cid$orig_h; 
 
 	local result = F ; 
-
 	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
 	{
 		Scan::add_to_known_scanners(orig, "LandMine"); 
@@ -307,7 +306,8 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )|| (! Cluster::is_enabled()))
 		if (new)
 		{ 
-			log_scan_summary(known_scanners[orig], DETECT) ; 
+			#log_scan_summary(known_scanners[orig], DETECT) ; 
+			log_scan_summary(scan_summary[orig], DETECT) ; 
 		} 
 @endif 
 

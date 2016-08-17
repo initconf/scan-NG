@@ -42,6 +42,7 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	local orig=ci$cid$orig_h; 
 
 	local result = F ; 
+
 	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
 	{
 		Scan::add_to_known_scanners(orig, "LandMine"); 

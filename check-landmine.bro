@@ -128,6 +128,12 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 
 function filterate_LandMineScan(c: connection, darknet: bool ): string 
 { 
+
+	if (darknet)
+		return "L" ;
+	else 
+		return "" ; 
+
 	 if (gather_statistics)
                 s_counters$c_land_filterate += 1  ;
 
@@ -136,6 +142,11 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 	
 	local orig_p = c$id$orig_p ;
         local resp_p = c$id$resp_p ;
+
+	if (Site::is_local_addr(resp) && resp in Site::subnet_table)
+        {
+		return "" ; 
+	} 
 
 	# prevent manager to keep firing events if already a scanner
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
@@ -185,11 +196,12 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 
 	if (Site::is_local_addr(resp) && resp !in Site::subnet_table)
 	{
-		#if ((is_failed(c) || is_reverse_failed(c) ) ) 
-		#{ 
+		if ((is_failed(c) || is_reverse_failed(c) ) ) 
+		{ 
+			log_reporter(fmt("inside landmine fails : %s", c$id),0); 
 			#add_to_landmine_cache(orig, resp_p, resp) ; 
 			return "L" ; 
-		#}
+		}
 	}
 
 	return ""; 

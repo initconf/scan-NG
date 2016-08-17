@@ -128,6 +128,8 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 
 function filterate_LandMineScan(c: connection, darknet: bool ): string 
 { 
+	if (get_port_transport_proto(c$id$resp_p) != tcp )
+		return "" ; 
 
 	if (darknet)
 		return "L" ;

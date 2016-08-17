@@ -270,7 +270,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	### ash local detect_ts = known_scanners[ss$scanner]$detect_ts  ; 
 	
 	### preserve detect_ts until scan_summary expires now 
-	if (ss$scanner in scan_summary)
+	if (ss?$scanner && ss$scanner in scan_summary)
 		scan_summary[ss$scanner]$detect_ts = ss$detect_ts ; 
 	else 
 		log_reporter (fmt("ss$scanner not found in scan_summary : %s, %s", ss$scanner, ss),5); 

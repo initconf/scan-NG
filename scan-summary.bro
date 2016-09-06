@@ -298,6 +298,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 	info$distance = haversine_distance_ip(128.3.0.0, ss$scanner) ; 
 
 	info$event_peer = ss$event_peer ; 
+
 	#log_reporter(fmt("log_scan_summary: info is : %s", info),5) ; 
 
 	Log::write(Scan::summary_LOG, info); 

@@ -120,9 +120,8 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 	
 	ci$cid = c$id ; 
 	ci$ts = c$start_time; 
-	
-	# too expensive 
-	### log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
+
+	# too expensive log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
 
         #already identified as scanner no need to proceed further 
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
@@ -306,7 +305,6 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )|| (! Cluster::is_enabled()))
 		if (new)
 		{ 
-			#log_scan_summary(known_scanners[orig], DETECT) ; 
 			log_scan_summary(scan_summary[orig], DETECT) ; 
 		} 
 @endif 

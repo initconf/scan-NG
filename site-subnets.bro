@@ -39,6 +39,7 @@ event reporter_error(t: time , msg: string , location: string )
 	{ 
 		for (nets in Site::local_nets)
                	{
+			print fmt("nets: %s", nets); 
 			local sv: subnet_Val = [$Network=nets, $Gateway=1.1.1.1, $Enclaves="Site", $Use="Filling the empty subnet table"]; 
               		Site::subnet_table[nets] = sv ; 
 		}
@@ -50,8 +51,8 @@ event reporter_error(t: time , msg: string , location: string )
 
 event Input::end_of_data(name: string, source: string)                                                         
 {                                                                         
-	#print fmt ("name is %s source is %s", name, source); 
-        #print fmt("digested  %s records in %s",|source|, source);
+	print fmt ("name is %s source is %s", name, source); 
+        print fmt("digested  %s records in %s",|source|, source);
 		
 	# since subnet table is zero size
        	# we poulate with local_nets

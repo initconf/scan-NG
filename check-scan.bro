@@ -113,6 +113,7 @@ function not_scanner(cid: conn_id): bool
         if (resp in Site::local_nets && [resp, service] in ipportexclude)
         {       return T;  }
 
+
 	return result ; 
 } 
 
@@ -215,6 +216,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	if (activate_LowPortTrolling && ! uid_table[c$uid] )
 		filter__LowPortTroll = Scan::filterate_LowPortTroll(c, established, reverse); 
 
+
 	# we hold off on PortScan to use the heuristics provided by sumstats 	
 	# if (activate_PortScan)
   	#	filter__PortScan = Scan::filterate_PortScan(c, established, reverse) ; 
@@ -231,7 +233,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 		### we maintain a uid_table with create_expire of 30 secs so that same connection processed by one event 
 		### is not again sent - for example if C is already processed in scan-engine for new_connection, lets not 
 		### process same C for subsiquent TCP events such as conn_terminate or conn_rejected etc. 
-		if (!uid_table[c$uid])
+		if (c$uid !in uid_table)
 		{ 
 			local filterator = fmt("%s%s%s%s%s%s", filter__KnockKnock, filter__LandMine, filter__Backscatter, filter__AddressScan, filter__PortScan,filter__LowPortTroll); 
 			uid_table[c$uid]=T ; 

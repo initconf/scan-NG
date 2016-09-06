@@ -6,7 +6,7 @@
 
 module Scan; 
 
-redef Scan::activate_KnockKnockScan = T; 
+redef Scan::activate_KnockKnockScan = T ; 
 redef Scan::activate_BackscatterSeen = T ; 
 redef Scan::activate_LandMine = T ;
 redef Scan::activate_LowPortTrolling = T ; 
@@ -18,13 +18,13 @@ redef TRW::use_TRW_algorithm = F ;
 ########## Important to configure for Landmine detection 
 ####  if subnet_feed is empty then LandMine detection wont work 
 
-redef Scan::landmine_thresh_trigger = 4 &redef;
-redef Scan::landmine_ignore_src_ports: set [port] = { 53/tcp, 53/udp} ;
+redef Scan::landmine_thresh_trigger = 5 &redef;
+redef Scan::landmine_ignore_ports: set [port] = { 53/tcp, 53/udp} ;
 
-redef Scan::allow_icmp_landmine_check = F ; 
+redef Scan::allow_icmp_landmine_check = F ;
 redef Scan::ignore_landmine_ports: set[port] = { 8/icmp } &redef ;
 
-# 8/icmp as d_port == backscatter from DoS 
+# 8/icmp as d_port == backscatter from DoS
 
 ##### this is list of allocated subnets in your network
 ##### landmine works on watching connections which are not in allocated subnets 
@@ -37,7 +37,7 @@ redef Scan::ignore_landmine_ports: set[port] = { 8/icmp } &redef ;
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 ############################################################################################
 ##### Input files - Whitelist IP and Subnets file 
@@ -49,13 +49,8 @@ redef Site::subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ;
 ###	15.5.5.5/32     NO scanning from EDU
 ############################################################################################
 
-### uncomment to put whitelist at your choice location
-### by default whitelists are read from ../scan-NG/feeds/ directory 
-### ip-whitelist.scan: #fields ip      comment 
-### subnet-whitelist.scan: #fields nets    comment 
-
-redef Scan::whitelist_ip_file = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" ; 
-redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" ; 
+redef Scan::whitelist_ip_file = "/feeds/BRO-feeds/ip-whitelist.scan" ; 
+redef Scan::whitelist_subnet_file = "/feeds/BRO-feeds/subnet-whitelist.scan" ; 
 
 
 ####### KnockKnockScan whitelist file 
@@ -65,7 +60,7 @@ redef Scan::whitelist_subnet_file = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan
 ###	#fields exclude_ip      exclude_port    t       comment
 ###	11.3.2.5  123	tcp     example comment 
 
-redef ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" ; 
+redef ipportexclude_file  = "/feeds/BRO-feeds/knockknock.exceptions" ; 
 
 
 ############################################################################################
@@ -106,7 +101,7 @@ redef Scan::knock_high_threshold_ports += {
 					3832/tcp, 389/tcp, 4242/tcp, 443/tcp, 
 					445/tcp, 52311/tcp, 5900/tcp, 60244/tcp, 
 					60697/tcp, 80/tcp, 8080/tcp, 7000/tcp, 8192/tcp,
-					8194/tcp, 8443/tcp, 88/tcp, 9001/tcp, 51290/tcp, 
+					8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
 				};
 
 ############################################################################################
@@ -137,15 +132,6 @@ redef skip_scan_nets += {}  ;
 # purposes.
 
 redef skip_dest_server_ports += {} ; 
-
-redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
-				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
-				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
-				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
-				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
-				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
-				631/tcp,
-                       };
 
 redef Scan::skip_services += { 23/tcp, 445/tcp}; 
 

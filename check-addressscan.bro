@@ -17,13 +17,13 @@ export {
 
 	# Report a scan of peers at each of these points.
         const report_peer_scan: vector of count = {
-                30, 100, 1000, 10000, 50000, 100000, 250000, 500000, 1000000,
+                20, 30, 50, 100, 1000, 10000, 50000, 100000, 250000, 500000, 1000000,
         } &redef;
 
 
 
         const report_outbound_peer_scan: vector of count = {
-                30, 100, 1000, 10000,
+                20, 30, 50, 100, 1000, 10000,
         } &redef;
 
 

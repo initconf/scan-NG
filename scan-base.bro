@@ -63,7 +63,7 @@ export {
 	global is_scanner: function (cid: conn_id): bool ;
 	global is_darknet: function(ip: addr): bool  ;
 
-	global table_start_ts: table[addr] of start_ts &read_expire=1 day ; 
+	global table_start_ts: table[addr] of start_ts &read_expire=1 hrs ; 
 
 	global ignored_scanners: set[addr] &create_expire = 1 day &redef;
 

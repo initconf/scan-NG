@@ -44,6 +44,7 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	local result = F ; 
 	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
 	{
+		log_reporter (fmt("run_scan_detection: check_LandMine %s, %s", ci, filtrator),0); 
 		Scan::add_to_known_scanners(orig, "LandMine"); 
 	} 
 	else if (Scan::activate_KnockKnockScan && /K/ in filtrator && check_KnockKnockScan(cid, established, reverse)) 
@@ -52,7 +53,7 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	} 
 	else if (Scan::activate_BackscatterSeen &&  /B/ in filtrator && Scan::check_BackscatterSeen(cid, established, reverse))
 	{
-		#log_reporter (fmt("run_scan_detection: check_BackscatterSeen %s, %s", ci, filtrator),0); 
+
 		Scan::add_to_known_scanners(orig, "BackscatterSeen");	
 	} 
 	else if (activate_AddressScan && /A/ in filtrator && check_AddressScan(cid, established, reverse)) 
@@ -120,8 +121,9 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 	
 	ci$cid = c$id ; 
 	ci$ts = c$start_time; 
-
-	# too expensive log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
+	
+	# too expensive 
+	### log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
 
         #already identified as scanner no need to proceed further 
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
@@ -175,17 +177,12 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 
 		
 
-	### if successful notify all workers of scanner 
-	### so that they stop reporting further 
-		
-        if (result)
-        {
-		# check for conn_history - that is if we ever saw a full SF going to this IP
-		#if (History::check_conn_history(orig)) 
-		#{
-			#log_reporter(fmt("check_conn_histry = T in w_m_knockscan_new: %s", known_scanners[orig]),0);
-		#}
+	# if successful notify all workers of scanner 
+	# so that they stop reporting further 
+	# check for conn_history - that is if we ever saw a full SF going to this IP
 
+        if (result && ! History::check_conn_history(orig) )
+        {
 		# if successful scanner, dispatch it to all workers 
 		# this is needed to keep known_scanners table syncd on all workers 
 
@@ -305,6 +302,7 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )|| (! Cluster::is_enabled()))
 		if (new)
 		{ 
+			#log_scan_summary(known_scanners[orig], DETECT) ; 
 			log_scan_summary(scan_summary[orig], DETECT) ; 
 		} 
 @endif 

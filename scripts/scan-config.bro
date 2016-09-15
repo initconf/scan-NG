@@ -31,13 +31,13 @@ redef Scan::ignore_landmine_ports: set[port] = { 8/icmp } &redef ;
 ##### file looks as follows (tab seperated) 
 ### 	Example 
 ###	#fields Network Gateway Enclaves        Use
-###	1.2.2.0/24    1.2.2.1            Research group 
+###	128.3.2.0/24    128.3.2.1       LBL     Research group 
 
 @ifndef(Site::subnet_feed)
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/feeds/BRO-feeds/subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 ############################################################################################
 ##### Input files - Whitelist IP and Subnets file 
@@ -133,8 +133,7 @@ redef skip_scan_nets += {}  ;
 
 redef skip_dest_server_ports += {} ; 
 
-
-redef Scan::skip_services += { 23/tcp, 445/tcp}; 
+redef Scan::skip_services += { 2323/tcp, 23/tcp, 445/tcp}; 
 
 
 redef Scan::skip_services += { 123/tcp, } ;

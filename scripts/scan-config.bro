@@ -133,6 +133,15 @@ redef skip_scan_nets += {}  ;
 
 redef skip_dest_server_ports += {} ; 
 
+redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp, 
+				25/tcp,  42/tcp,  53/tcp,  80/tcp, 
+				87/tcp,  109/tcp, 110/tcp, 111/tcp, 
+				135/tcp, 137/tcp, 138/tcp, 139/tcp, 
+				143/tcp, 407/tcp, 443/tcp, 445/tcp, 
+				513/tcp, 514/tcp, 520/tcp, 540/tcp, 
+				631/tcp,
+                       };
+
 redef Scan::skip_services += { 2323/tcp, 23/tcp, 445/tcp}; 
 
 

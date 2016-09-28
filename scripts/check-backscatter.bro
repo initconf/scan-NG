@@ -32,7 +32,7 @@ export {
 	global distinct_backscatter_peers: table[addr] of table[port] of set[addr] &read_expire=1 day; 
 
 	type bs: table[port] of opaque of cardinality &default=function(p:port): opaque of cardinality {return hll_cardinality_init(0.1, 0.99); };
-        global c_distinct_backscatter_peers: table[addr] of bs  &read_expire=1 day ;
+        global c_distinct_backscatter_peers: table[addr] of bs  &create_expire=1 day ;
 
 	# backscatter traffic doesn't generally have > 10 uniq src port 
 	# also to prevent the table from bloating up 

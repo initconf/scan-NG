@@ -27,4 +27,3 @@
 @load ./netcontrol-scan-rules 
 
 #@load ./check-port-knock 
-

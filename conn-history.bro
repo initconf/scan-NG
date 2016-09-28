@@ -136,7 +136,7 @@ event connection_state_remove(c: connection) &priority=-5
 	local dst = c$id$resp_h; 
 		
 	# ignore remote originating connections 	
-	if (src in Site::local_nets) 
+	if (src !in Site::local_nets) 
 		return ; 
 
 	

@@ -247,14 +247,13 @@ function workers_update_scan_summary(idx: addr)
 		#########
 
 	} 
-	else
-		 log_reporter(fmt("update_scan_summary_counts: idx NOT conn_table: %s", idx),5) ; 
+	#else
+	#	 log_reporter(fmt("update_scan_summary_counts: idx NOT conn_table: %s", idx),5) ; 
 	} 
- else
- {
-	log_reporter(fmt("update_scan_summary_counts: idx NOT scan_summary: %s", idx),5) ; 
-
- }
+ #else
+ #{
+ #	log_reporter(fmt("update_scan_summary_counts: idx NOT scan_summary: %s", idx),5) ; 
+ #}
 
 } 
 

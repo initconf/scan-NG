@@ -30,7 +30,7 @@ export
 
 	global c_landmine_distinct_peers: table[addr] of opaque of cardinality 
 		&default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
-                &read_expire = 5 days  &expire_func=c_landmine_scan_summary ; 
+                &read_expire = 1 days  &expire_func=c_landmine_scan_summary ; 
 
 	global landmine_ignore_ports: set [port] = { 53/tcp, 53/udp} &redef ;
 

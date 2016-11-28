@@ -137,10 +137,13 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
        # check if in knock_high_threshold_ports or rare port scan (too few concurrent scanners)
        # notch up threshold ot high  - likewise for medium thresholds
 
-       if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
-       {       high_threshold_flag = T ; }
-       else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
-       {       medium_threshold_flag = T ;  }
+	if (! high_threshold_flag ) 
+	{ 
+	       if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
+	       {       high_threshold_flag = T ; }
+	       else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
+	       {       medium_threshold_flag = T ;  }
+	} 
 
 
 	if (orig !in Scan::known_scanners)

@@ -118,6 +118,9 @@ redef Scan::suppress_UDP_scan_checks = T ;
 
 # skip
 
+redef portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ;
+
+
 redef skip_services += { 111/tcp, } ; 
 
 redef skip_outbound_services += { 22/tcp, 3128/tcp, 80/tcp, 8080/tcp, } ; 

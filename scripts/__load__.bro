@@ -25,5 +25,6 @@
 @load ./check-scan
 @load ./scan-config 
 @load ./netcontrol-scan-rules 
+@load ./skip-services 
 
 #@load ./check-port-knock 

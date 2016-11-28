@@ -17,6 +17,7 @@ export {
 
         type portexclude_Val: record {
                 skip_port : port &type_column="t";
+		comment: string &optional ; 
         } ;
 
 	global skip_services: set[port] = {111/tcp, } ; 

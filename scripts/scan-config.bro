@@ -162,9 +162,6 @@ redef Scan::skip_scan_sources += {
 	255.255.255.255,        # who knows why we see these, but we do
         } &redef;
 
-redef Scan::skip_scan_nets  += { } ; 
-
-
 
 # List of well known local server/ports to exclude for scanning purposes.
 redef Scan::skip_dest_server_ports: set[addr, port] += {} ; 

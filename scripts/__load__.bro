@@ -4,6 +4,7 @@
 @load ./site-subnets
 @load ./conn-history 
 @load ./host-profiling 
+@load ./skip-services 
 
 @load ./stats
 @load ./scan-base 
@@ -25,6 +26,6 @@
 @load ./check-scan
 @load ./scan-config 
 @load ./netcontrol-scan-rules 
-@load ./skip-services 
+
 
 #@load ./check-port-knock 

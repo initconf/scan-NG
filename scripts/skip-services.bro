@@ -20,7 +20,6 @@ export {
 		comment: string &optional ; 
         } ;
 
-	global skip_services: set[port] = {111/tcp, } ; 
 	global port_exclude_table: table[port] of portexclude_Val=table(); 
 } 
 

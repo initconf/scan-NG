@@ -118,8 +118,8 @@ redef Scan::suppress_UDP_scan_checks = T ;
 
 # skip
 
-redef portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ;
 
+redef Scan::portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ; 
 
 redef skip_services += { 111/tcp, } ; 
 
@@ -151,6 +151,8 @@ redef Scan::skip_services += { 2323/tcp, 23/tcp, 445/tcp};
 redef Scan::skip_services += { 123/tcp, } ;
 redef Scan::skip_services += { 111/tcp, } ; 
 
+redef Scan::skip_services += { 7547/tcp, 5555/tcp } ;
+
 
 ### Dont flag internal hosts hitting external IPs on following ports 
 ### affects entire Scan Detection 
@@ -161,6 +163,9 @@ redef Scan::skip_outbound_services += { 22/tcp, 3128/tcp,
 redef Scan::skip_scan_sources += {
 	255.255.255.255,        # who knows why we see these, but we do
         } &redef;
+
+redef Scan::skip_scan_nets  += { } ; 
+
 
 
 # List of well known local server/ports to exclude for scanning purposes.

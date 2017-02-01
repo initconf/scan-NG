@@ -181,6 +181,7 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 	# so that they stop reporting further 
 	# check for conn_history - that is if we ever saw a full SF going to this IP
 
+
 @ifdef (History::check_conn_history)
         if (result && ! History::check_conn_history(orig) )
         {

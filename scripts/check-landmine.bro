@@ -129,12 +129,13 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 	local orig_p = c$id$orig_p ;
         local resp_p = c$id$resp_p ;
 
+	# check if src is local_nets, ignore for the time-being 
+	if (orig in Site::local_nets )
+		return "" ; 
 
 	# check if really Darknet IP or not 
 	if (resp in Site::local_nets && resp in Site::subnet_table) 
-	{
 		return "" ; 
-	} 
 
 	# just in case 	
 	if (! darknet) 

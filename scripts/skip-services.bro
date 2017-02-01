@@ -1,4 +1,4 @@
-redef exit_only_after_terminate=T ;
+#redef exit_only_after_terminate=T ;
 
 module Scan;
 
@@ -10,6 +10,7 @@ export {
 	}; 
 
 	global portexclude_file = "" &redef ;
+	redef portexclude_file = "/YURT/feeds/BRO-feeds/scan-portexclude" ; 
 
         type Idx: record {
                 skip_port : port &type_column="t";

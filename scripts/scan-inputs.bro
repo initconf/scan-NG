@@ -206,15 +206,13 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
 event Scan::m_w_add_ip(ip: addr, comment: string)
         {
 
-	local _msg="" ; 
+		local _msg="" ; 
 
-        	#log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
+        	log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
 		if ( ip !in whitelist_ip_table) 
 		{
 			local wl: wl_ip_Val; 
 			whitelist_ip_table[ip]=wl ; 
-
-
 		} 
 
 		whitelist_ip_table[ip]$ip = ip; 
@@ -222,117 +220,119 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 	
 		# disable for the time-being to keep consistency with changed, removed 
 		# and webspiders are being logged already 
-		#local _msg = fmt("%s: %s", ip, comment); 
-		#NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
 
+		_msg = fmt("%s: %s", ip, comment); 
+
+		#NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
+		
 		if (PURGE_ON_WHITELIST)
 		{ 
+			NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
 			if (ip in known_scanners)
 			{
-				_msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
-				NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
 				delete known_scanners[ip] ; 
-
-				@ifdef (NetControl::unblock_address_catch_release) 
-					NetControl::unblock_address_catch_release(ip, _msg);
-				@endif 
 			}
 
-		} 
-        }
+			_msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
+
+			@ifdef (NetControl::unblock_address_catch_release) 
+				NetControl::unblock_address_catch_release(ip, _msg);
+			@endif 
+		}	 
+	}
 
 event Scan::m_w_update_ip(ip: addr, comment: string)
 {
-        #log_reporter(fmt ("scan-inputs.bro: m_w_update_ip: %s, %s", ip, comment), 0);
-	whitelist_ip_table[ip]$comment= comment; 
+#log_reporter(fmt ("scan-inputs.bro: m_w_update_ip: %s, %s", ip, comment), 0);
+whitelist_ip_table[ip]$comment= comment; 
 }
 
 event Scan::m_w_remove_ip(ip: addr, comment: string)
 {
-        #log_reporter(fmt ("scan-inputs.bro: m_w_remove_ip: %s, %s", ip, comment), 0);
-	delete whitelist_ip_table[ip]; 
+#log_reporter(fmt ("scan-inputs.bro: m_w_remove_ip: %s, %s", ip, comment), 0);
+delete whitelist_ip_table[ip]; 
 }
 
 
 event Scan::m_w_add_subnet(nets: subnet, comment: string)
 {
-        	#log_reporter(fmt ("scan-inputs.bro: m_w_add_subnet: %s, %s", nets, comment), 0);
-		if (nets !in whitelist_subnet_table) 
-		{
-			local wl : wl_subnet_Val ; 
-			whitelist_subnet_table[nets] = wl ; 
-		} 
+	#log_reporter(fmt ("scan-inputs.bro: m_w_add_subnet: %s, %s", nets, comment), 0);
+	if (nets !in whitelist_subnet_table) 
+	{
+		local wl : wl_subnet_Val ; 
+		whitelist_subnet_table[nets] = wl ; 
+	} 
 
-		whitelist_subnet_table[nets]$nets = nets; 
-		whitelist_subnet_table[nets]$comment = comment;
+	whitelist_subnet_table[nets]$nets = nets; 
+	whitelist_subnet_table[nets]$comment = comment;
 
-		if (PURGE_ON_WHITELIST)
-                {
-			for (ip in known_scanners)
-			{ 
-                        	if (ip in nets)
-				{
+	if (PURGE_ON_WHITELIST)
+	{
+		for (ip in known_scanners)
+		{ 
+			if (ip in nets)
+			{
 
-                        		local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
+				local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
 
-					NOTICE([$note=PurgeOnWhitelist, $src=ip,
-						$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
-					delete known_scanners[ip] ;
-	
-					@ifdef (NetControl::unblock_address_catch_release) 
-						NetControl::unblock_address_catch_release(ip, _msg);
-					@endif 
-				} 
+				NOTICE([$note=PurgeOnWhitelist, $src=ip,
+					$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+				delete known_scanners[ip] ;
+
+				@ifdef (NetControl::unblock_address_catch_release) 
+					NetControl::unblock_address_catch_release(ip, _msg);
+				@endif 
 			} 
-                }
-        
+		} 
+	}
+
 } 
 
 event Scan::m_w_update_subnet(nets: subnet, comment: string)
 {
-        #log_reporter(fmt ("scan-inputs.bro: m_w_update_subnet: %s, %s", nets, comment), 0);
-	whitelist_subnet_table[nets]$comment = comment;
+#log_reporter(fmt ("scan-inputs.bro: m_w_update_subnet: %s, %s", nets, comment), 0);
+whitelist_subnet_table[nets]$comment = comment;
 }
 
 event Scan::m_w_remove_subnet(nets: subnet, comment: string)
 {
-        #log_reporter(fmt ("scan-inputs.bro: m_w_remove_subnet: %s, %s", nets, comment), 0);
-	delete whitelist_subnet_table[nets]; 
+#log_reporter(fmt ("scan-inputs.bro: m_w_remove_subnet: %s, %s", nets, comment), 0);
+delete whitelist_subnet_table[nets]; 
 }
 @endif
 
 
 event update_whitelist()
 {
-        ##log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
-	#print fmt("%s", whitelist_ip_table); 
+##log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
+#print fmt("%s", whitelist_ip_table); 
 
-	Input::force_update("whitelist_ip");
-	Input::force_update("whitelist_subnet");
+Input::force_update("whitelist_ip");
+Input::force_update("whitelist_subnet");
 
-	schedule update_whitelist_timer  { update_whitelist() } ; 
+schedule update_whitelist_timer  { update_whitelist() } ; 
 }
 
 
 event read_whitelist()
 {
-        if ( ! Cluster::is_enabled() || Cluster::local_node_type() == Cluster::MANAGER )
-                {
-				Input::add_table([$source=whitelist_ip_file, $name="whitelist_ip", $idx=wl_ip_Idx, 
-				$val=wl_ip_Val,  $destination=whitelist_ip_table, $mode=Input::REREAD,$ev=read_whitelist_ip]);
+if ( ! Cluster::is_enabled() || Cluster::local_node_type() == Cluster::MANAGER )
+	{
+			Input::add_table([$source=whitelist_ip_file, $name="whitelist_ip", $idx=wl_ip_Idx, 
+			$val=wl_ip_Val,  $destination=whitelist_ip_table, $mode=Input::REREAD,$ev=read_whitelist_ip]);
 
-				Input::add_table([$source=whitelist_subnet_file, $name="whitelist_subnet", 
-				$idx=wl_subnet_Idx, $val=wl_subnet_Val,  $destination=whitelist_subnet_table, 
-				$mode=Input::REREAD,$ev=read_whitelist_subnet]);
-                }
+			Input::add_table([$source=whitelist_subnet_file, $name="whitelist_subnet", 
+			$idx=wl_subnet_Idx, $val=wl_subnet_Val,  $destination=whitelist_subnet_table, 
+			$mode=Input::REREAD,$ev=read_whitelist_subnet]);
+	}
 
-	 #schedule update_whitelist_timer  { update_whitelist() } ; 
+ #schedule update_whitelist_timer  { update_whitelist() } ; 
 }
 
 
 event bro_init() &priority=5
 {
-	schedule read_whitelist_timer  { read_whitelist() }; 
+schedule read_whitelist_timer  { read_whitelist() }; 
 }
 
 

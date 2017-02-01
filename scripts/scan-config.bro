@@ -118,6 +118,13 @@ redef Scan::suppress_UDP_scan_checks = T ;
 
 # skip
 
+####### format of scan-portexclude
+##fields skip_port       t       comment
+#7547    tcp     2016-11-26 big bot scan
+#5555    tcp     2016-11-27 big bot scan
+#23231   tcp     2016-12-21 big bot scan marai
+############
+
 
 redef Scan::portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ; 
 

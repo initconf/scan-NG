@@ -1,3 +1,4 @@
 [package]
-version=0.0.1 
+description = Clusterized scan-detection based on bro-1.5.3 scan-detection policies.
+tags = scan, scan-detection
 script_dir=scripts 

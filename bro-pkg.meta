@@ -1,6 +1,6 @@
 [package]
-version=0.0.1 
-script_dir=scripts 
-description = scan detection in 2.x world. Forward porting of bro-1.5.3 scan.bro accompanied with new heuristics and quicker detections. 
-tags=scan detection 
-
+description = scan detection in 2.x world. Forward porting of bro-1.5.3 scan.bro accompanied with new heuristics and quicker detections
+tags = scan detection
+version = 0.1
+script_dir = scripts
+#test_command = ( cd tests && btest -d )

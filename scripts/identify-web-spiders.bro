@@ -22,8 +22,8 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 		{
 			local _msg = fmt("web-spider seeking %s", original_URI) ; 
 			NOTICE([$note=WebCrawler, $src=orig, $msg=fmt("%s", _msg)]);
-                        
-			event Scan::m_w_add_ip(orig, _msg); 
+                      
+			event Scan::m_w_add_ip(orig, _msg);  
 		} 
 	}
 } 

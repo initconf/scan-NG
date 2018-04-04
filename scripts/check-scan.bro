@@ -57,19 +57,29 @@ function is_catch_release_active(cid: conn_id): bool
 ## Returns: bool - T/F depending on various conditions satisfied internally 
 function not_scanner(cid: conn_id): bool 
 {
-
-@ifdef (NetControl::BlockInfo)
-	if (is_catch_release_active(cid) )
-		return T ; 
-@endif 
-
-	local result = F ; 
-
 	local orig = cid$orig_h ; 
 	local orig_p = cid$orig_p ; 
 	local resp = cid$resp_h ; 
 	local service = cid$resp_p ; 
 	local outbound = Site::is_local_addr(orig);
+
+#@ifdef (NetControl::BlockInfo)
+#	if (is_catch_release_active(cid) )
+#	{ 
+#		if (orig in known_scanners && cid$resp_p in Scan::skip_services)
+#		{ 
+#			local code: bool = F ; 
+#			code = NetControl::unblock_address_catch_release(cid$orig_h, "tcpsynportblock: Removing IP from catch-n-release"); 
+#			NOTICE([$note=DisableCatchRelease, $src=orig, $p=service, $id=cid, $src_peer=get_local_event_peer(), $msg=fmt ("Disable catch-n-release because %s added to skip_services", resp), $identifier=cat(orig)]);
+#			#log_reporter(fmt("unblock_address_catch_release: %s, %s", cid$orig_h, code), 10); 
+#		} 
+#
+#		return T ; 
+#	} 
+#@endif 
+
+	local result = F ; 
+
 
         # whitelist membership checks
         if (orig in Scan::whitelist_ip_table)
@@ -77,29 +87,28 @@ function not_scanner(cid: conn_id): bool
 
         if (orig in Scan::whitelist_subnet_table)
                 return T ;
-
+	
 	# ignore scan sources (ex: cloud.lbl.gov)
 	if (orig in skip_scan_sources)
 	{       return  T ; }
 
 	# Blocked on border router - perma firewalled
-	if (orig_p in skip_services )
-	{ 	return T ; } 
+	#if (orig_p in skip_services )
+	#{ 	return T ; } 
 
-
-	if ( service in skip_services &&  ! outbound )
-		return T;
-
+	#if ( service in skip_services &&  ! outbound )
+	#	return T;
+	
 	if ( outbound && service in skip_outbound_services )
 		return T;
-
+	
 	if ( orig in skip_scan_nets )
 		return T;
-
+	
 	# Don't include well known server/ports for scanning purposes.
 	if ( ! outbound && [resp, service] in skip_dest_server_ports )
 		return T;
-
+	
 	# check for conn_history - that is if we ever saw a full SF going to this IP
 #	if (History::check_conn_history(orig))
 #		return T ; 
@@ -137,7 +146,6 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	{ 
 		if (gather_statistics)
                         s_counters$already_scanner_counter += 1;
-
 		return ; 
 	} 
 
@@ -148,7 +156,8 @@ function check_scan(c: connection, established: bool, reverse: bool)
 		return ; 
 	} 
 
-	#log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),0);
+	#log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),10);
+
 
        	local resp = c$id$resp_h ;
 
@@ -201,9 +210,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 
 	# only check landmine if darknet ip 
 	if (activate_LandMine && ! uid_table[c$uid] && darknet )
-	{ 
 			filter__LandMine = Scan::filterate_LandMineScan(c, darknet ); 
-	} 
 	if (activate_BackscatterSeen && ! uid_table[c$uid])
 		filter__Backscatter = Scan::filterate_BackscatterSeen(c, darknet);
 
@@ -238,6 +245,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 			local filterator = fmt("%s%s%s%s%s%s", filter__KnockKnock, filter__LandMine, filter__Backscatter, filter__AddressScan, filter__PortScan,filter__LowPortTroll); 
 			uid_table[c$uid]=T ; 
 			check_scan_cache(c, established, reverse, filterator) ; 
+			add scan_candidates[c$id$orig_h] ; 
 		} 
 	} 
 } 
@@ -246,7 +254,6 @@ function check_scan(c: connection, established: bool, reverse: bool)
 ### speed up landmine and knockknock for darknet space 
 event new_connection(c: connection)
 {
-
 	#print fmt ("new_connection"); 
 	### for new connections we just want to supply C and only for darknet spaces 
 	### to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
@@ -259,6 +266,7 @@ event new_connection(c: connection)
 
          local tp = get_port_transport_proto(c$id$resp_p);
         
+	Scan::check_scan(c, F, F); 
 	if (tp == tcp && c$id$orig_h !in Site::local_nets && is_darknet(c$id$resp_h) )
 	{
 		Scan::check_scan(c, F, F); 

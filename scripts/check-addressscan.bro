@@ -289,7 +289,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 					if ((service in likely_server_ports && n > 99) || (service !in likely_server_ports)) 
 					{ 
 						NOTICE([$note=AddressScan,
-							$src=orig, $p=service, $n=n,
+							$src=orig, $id=cid, $p=service, $n=n,
 							$src_peer=get_local_event_peer(), 
 							$msg=fmt("%s has scanned %d hosts (%s)", orig, n, service)]);
 					 

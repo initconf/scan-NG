@@ -26,8 +26,8 @@ export {
 	global activate_KnockKnockScan = F &redef ; 
 	
 	redef enum Notice::Type += {
-		KnockKnockScan, # source flagged as scanner by TRW algorithm
-	       	KnockKnockSummary, # summary of scanning activities reported by TRW
+		KnockKnockScan, 
+	       	KnockKnockSummary, 
 		LikelyScanner, 
 		IgnoreLikelyScanner, 
 		KnockSummary, 
@@ -63,7 +63,7 @@ export {
 	global COMMUTE_DISTANCE = 320 &redef ; 
 
 	# automated_exceptions using input-framework
-	global ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" &redef ;
+	global ipportexclude_file  = "/usr/local/bro-cpp/common/feeds/BRO-feeds/knockknock.exceptions" &redef ;
 
 	type ipportexclude_Idx: record {
 		exclude_ip: addr;
@@ -102,7 +102,6 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 	local medium_threshold_flag=F; 
 	local usual_threshold_flag=F; 
 
-	# # # # # ## # # # # #
 	# code and heuristics of to determine if orig is inface a scanner
 
 	# gather geoip distance
@@ -172,8 +171,8 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
 
 		NOTICE([$note=KnockKnockScan, $src=orig,
-				 $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
-		log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
+				 $src_peer=get_local_event_peer(), $p=d_port, $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
+		#log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
 	} 
 

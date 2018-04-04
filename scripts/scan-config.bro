@@ -7,7 +7,7 @@
 module Scan; 
 
 redef Scan::activate_KnockKnockScan = T ; 
-redef Scan::activate_BackscatterSeen = T ; 
+redef Scan::activate_BackscatterSeen = F ; 
 redef Scan::activate_LandMine = T ;
 redef Scan::activate_LowPortTrolling = T ; 
 redef Scan::activate_AddressScan = T; 
@@ -37,7 +37,7 @@ redef Scan::ignore_landmine_ports: set[port] = { 8/icmp } &redef ;
 @load site-subnets.bro
 @endif 
 
-redef Site::subnet_feed="/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
+redef Site::subnet_feed="/usr/local/bro-cpp/common/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ; 
 
 ############################################################################################
 ##### Input files - Whitelist IP and Subnets file 
@@ -49,8 +49,8 @@ redef Site::subnet_feed="/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" ;
 ###	15.5.5.5/32     NO scanning from EDU
 ############################################################################################
 
-redef Scan::whitelist_ip_file = "/feeds/BRO-feeds/ip-whitelist.scan" ; 
-redef Scan::whitelist_subnet_file = "/feeds/BRO-feeds/subnet-whitelist.scan" ; 
+redef Scan::whitelist_ip_file = "/usr/local/bro-cpp/common/feeds/BRO-feeds/ip-whitelist.scan" ; 
+redef Scan::whitelist_subnet_file = "/usr/local/bro-cpp/common/feeds/BRO-feeds/subnet-whitelist.scan" ; 
 
 
 ####### KnockKnockScan whitelist file 
@@ -60,7 +60,7 @@ redef Scan::whitelist_subnet_file = "/feeds/BRO-feeds/subnet-whitelist.scan" ;
 ###	#fields exclude_ip      exclude_port    t       comment
 ###	11.3.2.5  123	tcp     example comment 
 
-redef ipportexclude_file  = "/feeds/BRO-feeds/knockknock.exceptions" ; 
+redef ipportexclude_file  = "/usr/local/bro-cpp/common/feeds/BRO-feeds/knockknock.exceptions" ; 
 
 
 ############################################################################################
@@ -95,12 +95,12 @@ redef Scan::knock_medium_threshold_ports += {
 					    } ; 
 
 redef Scan::knock_high_threshold_ports += { 
-					861/tcp, 80/tcp, 443/tcp, 8443/tcp, 8080/tcp, 
+					861/tcp, 80/tcp, 443/tcp, 8080/tcp, 
 					113/tcp, 636/tcp, 135/tcp, 139/tcp, 
 					17500/tcp, 18457/tcp, 3268/tcp, 3389/tcp, 
-					3832/tcp, 389/tcp, 4242/tcp, 443/tcp, 
+					3832/tcp, 389/tcp, 4242/tcp,  
 					445/tcp, 52311/tcp, 5900/tcp, 60244/tcp, 
-					60697/tcp, 80/tcp, 8080/tcp, 7000/tcp, 8192/tcp,
+					60697/tcp, 7000/tcp, 8192/tcp,
 					8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
 				};
 
@@ -118,17 +118,8 @@ redef Scan::suppress_UDP_scan_checks = T ;
 
 # skip
 
-####### format of scan-portexclude
-##fields skip_port       t       comment
-#7547    tcp     2016-11-26 big bot scan
-#5555    tcp     2016-11-27 big bot scan
-#23231   tcp     2016-12-21 big bot scan marai
-############
 
-
-redef Scan::portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ; 
-
-redef skip_services += { 111/tcp, } ; 
+redef Scan::portexclude_file = "/usr/local/bro-cpp/common/feeds/BRO-feeds/scan-portexclude" ; 
 
 redef skip_outbound_services += { 22/tcp, 3128/tcp, 80/tcp, 8080/tcp, } ; 
 
@@ -152,13 +143,10 @@ redef Scan::skip_services -= {  1/tcp,   11/tcp,  15/tcp,  19/tcp,
 				631/tcp,
                        };
 
-redef Scan::skip_services += { 2323/tcp, 23/tcp, 445/tcp}; 
-
-
-redef Scan::skip_services += { 123/tcp, } ;
-redef Scan::skip_services += { 111/tcp, } ; 
-
-redef Scan::skip_services += { 7547/tcp, 5555/tcp } ;
+#redef Scan::skip_services += { 2323/tcp, 23/tcp, 445/tcp}; 
+#redef Scan::skip_services += { 123/tcp, } ;
+#redef Scan::skip_services += { 111/tcp, } ; 
+#redef Scan::skip_services += { 7547/tcp, 5555/tcp } ;
 
 
 ### Dont flag internal hosts hitting external IPs on following ports 

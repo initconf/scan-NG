@@ -14,6 +14,7 @@ export {
                 PasswordGuessing, 	# source tried many user/password combinations
                 SuccessfulPasswordGuessing,     # same, but a login succeeded
 		HotSubnet, 	# Too many scanners originating from this subnet 
+		DisableCatchRelease, 
         };
 
         type scan_info : record {
@@ -31,11 +32,13 @@ export {
 	# Reason: (i) we don't know separate timers for workers and managers for a scanner 
 	# (ii) unexpected absence of known_scanners can cause values to be wrong in scan_summary
 
+	global finish_scan_summary: event(ip: addr); 
+
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 
         global known_scanners_inactive: function(t: table[addr] of scan_info , idx: addr): interval;
 
-        const known_scanners_create_expire: interval = 1 days ; # 20 mins ; 
+        const known_scanners_create_expire: interval = 1 day ; # 20 mins ; 
 
         global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 
@@ -44,7 +47,8 @@ export {
 	### workers will keep known_scanners until manager sends m_w_remove_scanner event 
 	### when manager calls known_scanners_inactive event 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER)
+
         global known_scanners: table[addr] of scan_info ; 
 @endif 
 
@@ -165,6 +169,7 @@ function is_darknet(ip: addr): bool
 
 ###### action to take when scanner is expiring 
 
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interval
 {
 	log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
@@ -173,11 +178,13 @@ function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interv
 	### since its inactive now 
 
 	event Scan::m_w_remove_scanner(idx); 
+	schedule 30 secs { Scan::finish_scan_summary(idx) } ; 
 
 	### delete from the manager too 
 
 	return 0 secs ; 
 } 
+@endif 
 
 function ignore_addr(a: addr)
 	{
@@ -331,7 +338,7 @@ event table_sizes()
 	#log_reporter(fmt("table_size: whitelist_ip_table: %s",|whitelist_ip_table|),0);
 	#log_reporter(fmt("table_size: whitelist_subnet_table: %s",|whitelist_subnet_table|),0);
 
-	schedule 10 mins { table_sizes() } ; 
+	schedule 10  mins { table_sizes() } ; 
 
 } 
 

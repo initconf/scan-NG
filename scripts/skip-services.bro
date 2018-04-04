@@ -10,7 +10,7 @@ export {
 	}; 
 
 	global portexclude_file = "" &redef ;
-	redef portexclude_file = "/YURT/feeds/BRO-feeds/scan-portexclude" ; 
+	redef portexclude_file = "/usr/local/bro-cpp/common/feeds/BRO-feeds/scan-portexclude" ; 
 
         type Idx: record {
                 skip_port : port &type_column="t";
@@ -28,7 +28,6 @@ event port_exclude(description: Input::TableDescription, tpe: Input::Event, left
 {
 	local _msg = "" ; 
 
-	print fmt ("%s", left$skip_port); 
 	if ( tpe == Input::EVENT_NEW )
         {
 		_msg = fmt ("Port %s added to skip_services", left$skip_port); 
@@ -50,7 +49,6 @@ event bro_init() {
 
 event bro_done()
 {
-
-	for (p in skip_services) 
-	print fmt ("%s", p); 
+	#for (p in skip_services) 
+	#print fmt ("%s", p); 
  } 

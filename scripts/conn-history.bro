@@ -59,11 +59,11 @@ function check_conn_history(ip: addr): bool
 event bro_init()
 {
 	# on avg we see 6.2M ip address a day 2016-04-01
-	# so setting bloom to 40M 
+	# so setting bloom to 10M 
 	# not yet measured what is overlap of 6.2M the next day
 	
-	tcp_outgoing_SF = bloomfilter_basic_init(0.0000001, 40000000);
-	tcp_conn_duration_bloom= bloomfilter_basic_init(0.0000001, 40000000);
+	tcp_outgoing_SF = bloomfilter_basic_init(0.00001, 40000000);
+	tcp_conn_duration_bloom= bloomfilter_basic_init(0.00001, 40000000);
 	#tcp_outgoing_SF = bloomfilter_basic_init(0.0001, 400);
 	#tcp_conn_duration_bloom= bloomfilter_basic_init(0.0001, 400);
 	initialized_bloom = T ; 
@@ -88,7 +88,7 @@ function add_to_bloom(ip: addr)
 
 @if ( Cluster::is_enabled() )
 	        event History::w_m_new(ip);
-        	#log_reporter(fmt ("add_to_bloom %s", ip), 0);
+        	#Scan::log_reporter(fmt ("add_to_bloom %s", ip), 0);
 @endif
 	} 
 	
@@ -98,11 +98,18 @@ function add_to_bloom(ip: addr)
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event History::w_m_new(ip: addr)
 {
-	#log_reporter(fmt ("History: w_m_new: %s", ip), 0);
+	#Scan::log_reporter(fmt ("History: w_m_new: %s", ip), 0);
 	bloomfilter_add(tcp_outgoing_SF, ip);
 }
 @endif
 
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+event History::m_w_add(ip: addr)
+{
+	Scan::log_reporter(fmt ("History: m_w_add: %s", ip), 0);
+	bloomfilter_add(tcp_outgoing_SF, ip);
+}
+@endif
 
 # so that we have all the flags etc
 

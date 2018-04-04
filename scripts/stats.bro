@@ -100,7 +100,7 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
 
 #	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
-	log_reporter(fmt("Got counters: %s", sc),0); 
+#	log_reporter(fmt("Got counters: %s", sc),2); 
 
 	
 

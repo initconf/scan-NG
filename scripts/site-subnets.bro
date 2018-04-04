@@ -21,7 +21,7 @@ export {
 
 	global subnet_table: table[subnet] of subnet_Val = table() &redef ; 
 
-	global subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" &redef ; 
+	global subnet_feed="/usr/local/bro-cpp/common/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" &redef ; 
 
 } 
 
@@ -39,7 +39,7 @@ event reporter_error(t: time , msg: string , location: string )
 	{ 
 		for (nets in Site::local_nets)
                	{
-			print fmt("nets: %s", nets); 
+			#print fmt("nets: %s", nets); 
 			local sv: subnet_Val = [$Network=nets, $Gateway=1.1.1.1, $Enclaves="Site", $Use="Filling the empty subnet table"]; 
               		Site::subnet_table[nets] = sv ; 
 		}

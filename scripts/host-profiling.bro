@@ -96,7 +96,7 @@ event Site::w_m_new_host_profile(cid: conn_id)
         local resp = cid$resp_h ;
         local d_port = cid$resp_p;
 
-	##Scan::log_reporter(fmt ("w_m_new_host_profile: %s", cid));
+	#Scan::log_reporter(fmt ("w_m_new_host_profile: %s", cid));
 
 	if (resp !in host_profiles)
 		host_profiles[resp]=set();

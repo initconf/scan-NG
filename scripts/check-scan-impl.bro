@@ -41,10 +41,8 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	local cid=ci$cid ; 
 	local orig=ci$cid$orig_h; 
 
-	local result = F ; 
 	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
 	{
-		log_reporter (fmt("run_scan_detection: check_LandMine %s, %s", ci, filtrator),0); 
 		Scan::add_to_known_scanners(orig, "LandMine"); 
 	} 
 	else if (Scan::activate_KnockKnockScan && /K/ in filtrator && check_KnockKnockScan(cid, established, reverse)) 
@@ -53,7 +51,6 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	} 
 	else if (Scan::activate_BackscatterSeen &&  /B/ in filtrator && Scan::check_BackscatterSeen(cid, established, reverse))
 	{
-
 		Scan::add_to_known_scanners(orig, "BackscatterSeen");	
 	} 
 	else if (activate_AddressScan && /A/ in filtrator && check_AddressScan(cid, established, reverse)) 
@@ -68,6 +65,8 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 		return F ; 
 
 	Scan::hot_subnet_check(orig); 
+
+	#log_reporter (fmt("2. run_scan_detection: conn_info: %s, filterator: %s", ci, filtrator),0); 
 
 	return T ; 
 }
@@ -123,7 +122,7 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 	ci$ts = c$start_time; 
 	
 	# too expensive 
-	### log_reporter(fmt("check_scan_cache: %s, filtrator is : %s", c$id, filtrator),0); 
+	#log_reporter(fmt("1: check_scan_cache: scan_candidate %s, filtrator is : %s", c$id, filtrator),0); 
 
         #already identified as scanner no need to proceed further 
         if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status)
@@ -173,25 +172,18 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 
 	populate_table_start_ts(ci); 
 
-       	local result = Scan::run_scan_detection(ci, established, reverse, filtrator) ; 
-
-		
+       	local is_scan = Scan::run_scan_detection(ci, established, reverse, filtrator) ; 
 
 	# if successful notify all workers of scanner 
 	# so that they stop reporting further 
-	# check for conn_history - that is if we ever saw a full SF going to this IP
+	# may be check for conn_history - that is if we ever saw a full SF going to this IP
 
-
-@ifdef (History::check_conn_history)
-        if (result && ! History::check_conn_history(orig) )
-        {
-		# if successful scanner, dispatch it to all workers 
+        if ( is_scan ) 
+        {	# if successful scanner, dispatch it to all workers 
 		# this is needed to keep known_scanners table syncd on all workers 
 
 		event Scan::m_w_add_scanner(known_scanners[orig]); 
         }
-@endif 
-
 }
 @endif
 
@@ -200,11 +192,21 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_add_scanner (ss: scan_info) 
 {
-	#log_reporter(fmt ("check-scan-impl: m_w_add_scanner: %s", ss$scanner), 0);
-
+	#log_reporter(fmt ("check-scan-impl: m_w_add_scanner: %s", ss), 0);
 	local orig = ss$scanner; 
 	local detection = ss$detection ; 
-        Scan::add_to_known_scanners(orig, detection );
+	if (orig !in known_scanners) 
+	{ 
+		Scan::add_to_known_scanners(orig, detection );
+	
+		# send stats (start_ts, end_ts etc to manager
+                # to be used in scan_summary
+                if (orig in worker_stats)
+                {
+                        worker_stats[orig]$detection=detection ;
+                        event Scan::aggregate_scan_stats(worker_stats[orig]);
+                }
+	} 
 	
 }
 @endif
@@ -240,20 +242,25 @@ event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 	{ 
 		known_scanners[ip]$status = status_flag ; 
 	} 
-	else 
-		log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s NOT found in known_scanners - PROBLEM", ip, status_flag), 0);
+	### ip !in known_scanners on workers if m_w_remove_scanner has kicked in 
+	### since m_w_update_scanner is sent by netcontrol-catch-relase expire
+	#else 
+		#log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s NOT found in known_scanners - PROBLEM", ip, status_flag), 0);
 
 
 } 
 @endif 
 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled())) 
 event Scan::m_w_remove_scanner(ip: addr) 
 {
 	if (ip in known_scanners)
-	{ 
-		log_reporter(fmt("m_w_remove_scanner: %s", known_scanners[ip]),0); 
+	{	
+		if (ip in worker_stats)
+                        event Scan::aggregate_scan_stats(worker_stats[ip]);
+
+		log_reporter(fmt("DELETING A KNOWN_SCANNER: m_w_remove_scanner: %s", known_scanners[ip]),6); 
 		delete known_scanners[ip] ; 
 	} 
 } 
@@ -267,7 +274,7 @@ event Scan::m_w_remove_scanner(ip: addr)
 ## detect: string - what kind of scan was it - knock, address, landmine, backscatter 
 function Scan::add_to_known_scanners(orig: addr, detect: string)
 {
-	#log_reporter(fmt("function Scan::add_to_known_scanners: %s, %s", orig, detect),0); 
+	#log_reporter(fmt("3: Scanner found: [add_to_known_scanners]: orig: %s, detect: %s", orig, detect),0); 
 
 	local new = F ; 
         if (orig !in Scan::known_scanners)
@@ -282,36 +289,22 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 		Scan::known_scanners[orig]$detect_ts = network_time(); 
                 Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
         
-		#log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
 
+### now that we have a known_scanner lets send stats to manager 
 
-	###populate scan_summary 
-	if (enable_scan_summary)
-	{
-		if (orig !in Scan::scan_summary)
-		{
-                local ss: scan_stats;
-                #local hh : set[addr];
-                Scan::scan_summary[orig] = ss ;
-                #Scan::scan_summary[orig]$hosts=hh ;
-		}  
+@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )	|| (! Cluster::is_enabled()) )
+	
+	# we only send if scanner touched this worker 
+	#Scan::initialize_scan_summary(known_scanners[orig]); 
+	if (orig in worker_stats) 
+	{ 
+		worker_stats[orig]$detection = detect ; 
+		#Scan::aggregate_scan_stats(worker_stats[orig]); 
+	} 
 
-                Scan::scan_summary[orig]$scanner=orig;
-                Scan::scan_summary[orig]$status = T ;
-                Scan::scan_summary[orig]$detection = detect ;
-                Scan::scan_summary[orig]$detect_ts = network_time();
-                #Scan::scan_summary[orig]$detect_ts = current_time();
-                Scan::scan_summary[orig]$event_peer = fmt ("%s", peer_description);
-
-@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )|| (! Cluster::is_enabled()))
-		if (new)
-		{ 
-			#log_scan_summary(known_scanners[orig], DETECT) ; 
-			log_scan_summary(scan_summary[orig], DETECT) ; 
-		} 
 @endif 
 
-	}  # if enable_scan_summary 
+	#log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
 
 
 }

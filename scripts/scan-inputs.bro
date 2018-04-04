@@ -19,9 +19,9 @@ export {
 
 	const read_files: set[string] = {} &redef;
 
-	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
-	global whitelist_subnet_file:  string = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
-	global blacklist_feeds: string =  "/YURT/feeds/BRO-feeds/blacklist.scan"  &redef ; 
+	global whitelist_ip_file:  string = "/usr/local/bro-cpp/common/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
+	global whitelist_subnet_file:  string = "/usr/local/bro-cpp/common/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
+	global blacklist_feeds: string =  "/usr/local/bro-cpp/common/feeds/BRO-feeds/blacklist.scan"  &redef ; 
 
         redef enum Notice::Type += {
                 Whitelist, 
@@ -205,10 +205,9 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_add_ip(ip: addr, comment: string)
         {
-
 		local _msg="" ; 
+        	#log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
 
-        	log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
 		if ( ip !in whitelist_ip_table) 
 		{
 			local wl: wl_ip_Val; 
@@ -221,19 +220,15 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 		# disable for the time-being to keep consistency with changed, removed 
 		# and webspiders are being logged already 
 
-		_msg = fmt("%s: %s", ip, comment); 
+		_msg = fmt("removing from known_scanners table due to whitelist: %s: %s", ip, comment); 
 
 		#NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
 		
-		if (PURGE_ON_WHITELIST)
+		if (PURGE_ON_WHITELIST && ip in known_scanners)
 		{ 
-			NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
-			if (ip in known_scanners)
-			{
-				delete known_scanners[ip] ; 
-			}
-
 			_msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
+			NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
+			delete known_scanners[ip] ; 
 
 			@ifdef (NetControl::unblock_address_catch_release) 
 				NetControl::unblock_address_catch_release(ip, _msg);
@@ -304,7 +299,7 @@ delete whitelist_subnet_table[nets];
 
 event update_whitelist()
 {
-##log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
+#log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
 #print fmt("%s", whitelist_ip_table); 
 
 Input::force_update("whitelist_ip");

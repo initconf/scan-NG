@@ -1,17 +1,25 @@
 #redef exit_only_after_terminate=T ; 
 
+redef table_expire_interval = 1 secs ;
+redef table_incremental_step=20000 ;
+
 @load ./debug 
 @load ./site-subnets
+### disabled 7/31 ; reenabled 2017-07-15  - aashish 
 #@load ./conn-history 
+#@load ./avoid-scan-FP.bro 
 @load ./host-profiling 
 
 
 @load ./stats
+
 @load ./scan-base 
 
 @load ./scan-inputs    
 @load ./skip-services 
-@load ./scan-summary 
+@load ./scan-spikes 
+#########@load ./scan-summary 
+@load ./ss.bro 
 
 @load ./identify-web-spiders
 
@@ -26,7 +34,7 @@
 @load ./check-scan-impl 
 @load ./check-scan
 @load ./scan-config 
-@load ./netcontrol-scan-rules 
+#@load ./netcontrol-scan-rules 
 
 
 #@load ./check-port-knock 

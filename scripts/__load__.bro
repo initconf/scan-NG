@@ -1,7 +1,7 @@
-#redef exit_only_after_terminate=T ; 
+redef exit_only_after_terminate=T ; 
 
-redef table_expire_interval = 1 secs ;
-redef table_incremental_step=20000 ;
+redef table_expire_interval = 0.1 secs ;
+redef table_incremental_step=250 ;
 
 @load ./debug 
 @load ./site-subnets

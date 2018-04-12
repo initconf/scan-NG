@@ -255,14 +255,13 @@ event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 @if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled())) 
 event Scan::m_w_remove_scanner(ip: addr) 
 {
-	if (ip in known_scanners)
-	{	
-		if (ip in worker_stats)
-                        event Scan::aggregate_scan_stats(worker_stats[ip]);
+	if (ip in worker_stats)
+		event Scan::aggregate_scan_stats(worker_stats[ip]);
 
-		log_reporter(fmt("DELETING A KNOWN_SCANNER: m_w_remove_scanner: %s", known_scanners[ip]),6); 
+	log_reporter(fmt("DELETING A KNOWN_SCANNER: m_w_remove_scanner: %s", known_scanners[ip]),6); 
+
+	if (ip in known_scanners) 
 		delete known_scanners[ip] ; 
-	} 
 } 
 @endif 
 
@@ -290,18 +289,9 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
                 Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
         
 
-### now that we have a known_scanner lets send stats to manager 
-
-@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )	|| (! Cluster::is_enabled()) )
-	
-	# we only send if scanner touched this worker 
-	#Scan::initialize_scan_summary(known_scanners[orig]); 
+@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled()))
 	if (orig in worker_stats) 
-	{ 
 		worker_stats[orig]$detection = detect ; 
-		#Scan::aggregate_scan_stats(worker_stats[orig]); 
-	} 
-
 @endif 
 
 	#log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);

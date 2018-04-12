@@ -40,7 +40,7 @@ export {
 
         const known_scanners_create_expire: interval = 1 day ; # 20 mins ; 
 
-        global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
+        global known_scanners: table[addr] of scan_info &write_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 
 @endif 
 
@@ -172,7 +172,7 @@ function is_darknet(ip: addr): bool
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interval
 {
-	log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
+	#log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
 	
 	### sending message to all workers to delete this scanner 
 	### since its inactive now 
@@ -182,7 +182,7 @@ function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interv
 
 	### delete from the manager too 
 
-	return 0 secs ; 
+	return 10 secs ; 
 } 
 @endif 
 

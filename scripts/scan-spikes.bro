@@ -53,6 +53,6 @@ function check_port_spikes(orig: addr, service: port)
 	{ 
 		local _msg = fmt ("Spike on scanning of port %s with %s IPs", service, |port_spikes[service]|); 
 		NOTICE([$note=Spike, $src=orig,
-               		$src_peer=get_local_event_peer(), $p=service, $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
+               		$src_peer=get_local_event_peer(), $p=service, $msg=fmt("%s", _msg)]);
 	} 
 } 

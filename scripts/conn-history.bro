@@ -35,8 +35,7 @@ function check_conn_history(ip: addr): bool
 	if (seen == 1)
 	{
        		NOTICE([$note=History::SF_to_Scanner, $src=ip,
-       			$msg=fmt("outgoing SF to scanner %s", ip),
-                       	$identifier=cat(ip), $suppress_for=1 hrs]);
+       			$msg=fmt("outgoing SF to scanner %s", ip)]);
 		
 		result = T ; 
 	}
@@ -47,8 +46,7 @@ function check_conn_history(ip: addr): bool
 	if (duration_seen == 1)
 	{
 		NOTICE([$note=History::LongDuration, $src=ip,
-		$msg=fmt("known long duration connections from this scanner IP: %s", ip),
-		$identifier=cat(ip), $suppress_for=1 hrs]);
+		$msg=fmt("known long duration connections from this scanner IP: %s", ip)]);
 		
 		result = T ; 
 	}

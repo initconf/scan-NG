@@ -1,4 +1,4 @@
-### code for scan-summary 
+## code for scan-summary 
 
 module Scan; 
 
@@ -12,7 +12,7 @@ export {
 	# status and statistics
         ########### ########### ########### ###########
 
-	global LOGGING_TIME = 6 mins ; # 1 hrs  ; # 60 mins ; 
+	global LOGGING_TIME = 20 mins ; # 1 hrs  ; # 60 mins ; 
 
 	type log_state: enum { DETECT, ONGOING, EXPIRE, UPDATE, FINISH, SUMMARY };
         type scan_stats : record {
@@ -26,15 +26,16 @@ export {
                         detect_ts: time &log &optional  &default=double_to_time(0.0);
                         total_conn: count &default=0 &log ;
                         #hosts: set[addr] &log &optional ;
-                        hosts: opaque of cardinality &default=hll_cardinality_init(0.01, 0.99);
+                        hosts: opaque of cardinality &default=hll_cardinality_init(0.1, 0.999);
                         #detect_count: count &log &optional &default=0;
 			event_peer: string &log &optional ;
                 };
 	
 @if ( ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled()))
+
 	global expire_worker_stats: function(t: table[addr] of scan_stats, idx: addr): interval ;  
 	global worker_stats: table[addr] of scan_stats=table()
-		 &create_expire=2 mins &expire_func=expire_worker_stats ; 
+		 &create_expire=10 mins  &expire_func=expire_worker_stats ; 
 @endif 
 
 	global report_manager_stats: function(t: table[addr] of scan_stats, idx: addr): interval;
@@ -87,14 +88,8 @@ redef Cluster::worker2manager_events += /Scan::aggregate_scan_stats/;
 @if ( ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled()))
 function Scan::expire_worker_stats(t: table[addr] of scan_stats, idx: addr): interval 
 { 
-
-	return 0 secs ; 
-
 	log_reporter(fmt("expire_worker_stats:  %s", t[idx]),10); 
-	if (idx in known_scanners) 
-	{ 
-		event Scan::aggregate_scan_stats(t[idx]);
-	} 
+	event Scan::aggregate_scan_stats(t[idx]);
 
         return 0 secs;
 
@@ -122,33 +117,42 @@ event connection_state_remove(c: connection)
                 local ss: scan_stats ;
                 worker_stats[orig]=ss ;
                 worker_stats[orig]$start_ts=c$start_time ;
+		#worker_stats[orig]$hosts = set() ; 
         }
 
         worker_stats[orig]$scanner=orig ; 
         worker_stats[orig]$end_ts=c$start_time ;
         worker_stats[orig]$total_conn += 1 ;
         hll_cardinality_add(worker_stats[orig]$hosts, resp);
+	#print fmt("Adding : %s, %s, %s", c$start_time, c$uid, c$id); 
+	#add worker_stats[orig]$hosts [resp] ; 
+	
 }
 @endif 
 
-@if ( ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (!Cluster::is_enabled()))
+
 
 function Scan::report_manager_stats(t: table[addr] of scan_stats, idx: addr): interval
 {
         log_reporter (fmt ("report_manager_stats: %s, size: %s", t[idx], |manager_stats|),10);
-        if (t[idx]$state == DETECT)
-        {
-                log_scan_summary(t[idx], DETECT );
-                t[idx]$state=UPDATE ;
-        }
-        else
-        {
-                log_scan_summary(t[idx], UPDATE);
-        }
+
+	if (idx in known_scanners)
+	{
+		if (t[idx]$state == DETECT)
+		{
+			log_scan_summary(t[idx], DETECT );
+			t[idx]$state=UPDATE ;
+		}
+		else
+		{
+			log_scan_summary(t[idx], UPDATE);
+		}
+	} 
 
         return LOGGING_TIME;
 }
 
+@if ( ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (!Cluster::is_enabled()))
 
 event Scan::aggregate_scan_stats(ss: scan_stats)
 {
@@ -166,6 +170,7 @@ event Scan::aggregate_scan_stats(ss: scan_stats)
 		manager_stats[orig]$end_ts = ss$end_ts ; 
 		manager_stats[orig]$detect_ts = ss$end_ts ; 
 		manager_stats[orig]$detection = ss$detection ; 
+		#manager_stats[orig]$hosts=set() ; 
 	} 
 		
 	manager_stats[orig]$detection = manager_stats[orig]$detection == "" ? ss$detection : manager_stats[orig]$detection ; 
@@ -181,6 +186,8 @@ event Scan::aggregate_scan_stats(ss: scan_stats)
 	local peer = get_event_peer()  ;
 	manager_stats[orig]$event_peer = fmt ("%s", peer$descr);
         hll_cardinality_merge_into(manager_stats[orig]$hosts, ss$hosts );
+	#for ( h in ss$hosts ) 
+	#	add manager_stats[orig]$hosts [h]; 
 
         log_reporter(fmt ("inside aggregate_scan_stats II  %s, size manager_stats: %s", manager_stats[orig], |manager_stats|),10);
 }
@@ -213,6 +220,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
         info$detect_latency = info$detect_ts - info$start_ts ;
         info$total_conn = ss$total_conn ;
         info$total_hosts_scanned = double_to_count(hll_cardinality_estimate(ss$hosts)); #|ss$hosts| ;
+	#info$total_hosts_scanned = |ss$hosts|; 
         info$duration = info$end_ts - info$start_ts ; ### ss$end_ts - ss$start_ts ;
         info$scan_rate = info$total_hosts_scanned == 0  ? 0 : interval_to_double(info$duration)/info$total_hosts_scanned ;
         local geoip_info = lookup_location(ss$scanner) ;
@@ -228,7 +236,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
         info$distance = haversine_distance_ip(128.3.0.0, ss$scanner) ;
         #info$event_peer = ss$event_peer ;
 
-        log_reporter(fmt("log_scan_summary: info is : %s", info),5) ;
+        #log_reporter(fmt("log_scan_summary: info is : %s", info),5) ;
 
 	Log::write(Scan::summary_LOG, info);
 }

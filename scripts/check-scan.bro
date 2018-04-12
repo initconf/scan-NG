@@ -70,7 +70,7 @@ function not_scanner(cid: conn_id): bool
 #		{ 
 #			local code: bool = F ; 
 #			code = NetControl::unblock_address_catch_release(cid$orig_h, "tcpsynportblock: Removing IP from catch-n-release"); 
-#			NOTICE([$note=DisableCatchRelease, $src=orig, $p=service, $id=cid, $src_peer=get_local_event_peer(), $msg=fmt ("Disable catch-n-release because %s added to skip_services", resp), $identifier=cat(orig)]);
+#			NOTICE([$note=DisableCatchRelease, $src=orig, $p=service, $id=cid, $src_peer=get_local_event_peer(), $msg=fmt ("Disable catch-n-release because %s added to skip_services", resp)]);
 #			#log_reporter(fmt("unblock_address_catch_release: %s, %s", cid$orig_h, code), 10); 
 #		} 
 #

@@ -170,8 +170,9 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 
 		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
 
-		NOTICE([$note=KnockKnockScan, $src=orig,
-				 $src_peer=get_local_event_peer(), $p=d_port, $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
+		#$ts=current_time(), 
+		NOTICE([$note=KnockKnockScan, $src=orig, 
+				 $src_peer=get_local_event_peer(), $p=d_port, $msg=fmt("%s", _msg)]);
 		#log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
 	} 

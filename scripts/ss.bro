@@ -2,6 +2,34 @@
 
 module Scan; 
 
+export {
+    const DEBUG = 1;
+
+    redef Site::local_nets += { 128.3.0.0/16, 131.243.0.0/16};
+    global  log_reporter: function (msg: string, debug: count);
+}
+
+
+
+
+function  log_reporter(msg: string, debug: count)
+{
+
+        #if (debug > 0 ) {
+                #event reporter_info(network_time(), msg, peer_description);
+        #}
+
+
+        if (DEBUG >= 0)
+    {
+    @if ( ! Cluster::is_enabled())
+        print fmt("%s", msg);
+    @endif
+        event reporter_info(network_time(), msg, peer_description);
+
+        }
+}
+
 export { 
 
 	global scan_candidates: set[addr] &create_expire=1 day ; 
@@ -109,8 +137,8 @@ event connection_state_remove(c: connection)
         if (orig in Site::local_nets ) 
                 return ;
 
-	if (orig !in scan_candidates)
-		return ; 
+	#if (orig !in scan_candidates)
+	#	return ; 
 
         if (orig !in worker_stats)
         {
@@ -136,8 +164,6 @@ function Scan::report_manager_stats(t: table[addr] of scan_stats, idx: addr): in
 {
         log_reporter (fmt ("report_manager_stats: %s, size: %s", t[idx], |manager_stats|),10);
 
-	if (idx in known_scanners)
-	{
 		if (t[idx]$state == DETECT)
 		{
 			log_scan_summary(t[idx], DETECT );
@@ -147,7 +173,6 @@ function Scan::report_manager_stats(t: table[addr] of scan_stats, idx: addr): in
 		{
 			log_scan_summary(t[idx], UPDATE);
 		}
-	} 
 
         return LOGGING_TIME;
 }
@@ -228,7 +253,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
         info$event_peer = fmt ("%s", peer_description );
 
 
-        info$country_code=geoip_info$country_code ;
+        info$country_code=geoip_info?$country_code ? geoip_info$country_code : "" ;
         info$region = geoip_info?$region ? geoip_info$region : "" ;
         info$city = geoip_info?$city ? geoip_info$city : "" ;
 

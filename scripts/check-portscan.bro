@@ -104,7 +104,7 @@ export {
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
 #redef Cluster::manager2worker_events += /Scan::m_w_portscan_update_known_scanners/;
-redef Cluster::worker2manager_events += /Scan::w_m_portscan_new/;
+#redef Cluster::worker2manager_events += /Scan::w_m_portscan_new/;
 @endif
 
 
@@ -276,17 +276,19 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 	local _msg = fmt (" add_to_likely_scanner: calling w_m_portscan_new for %s, %s, %s", orig, service, resp);
 	log_reporter(_msg, 0); 
 	
-	event Scan::w_m_portscan_new(orig, service, resp, outbound);
+	#event Scan::w_m_portscan_new(orig, service, resp, outbound);
+	Broker::publish(Cluster::manager_topic, Scan::w_m_portscan_new, orig, service, resp, outbound);
+	
 @endif 
 	}	# end if established 
 } 
 
 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bool)
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
         local msg = fmt (" inside w_m_portscan_new for %s, %s, %s", orig, service, resp);
         log_reporter(msg, 0);
 
@@ -334,7 +336,8 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
                 local _msg = fmt ("w_m_portscan_new: calling m_w_portscan_update_known_scanners for: %s, %s, %s", orig, service, resp);
                 log_reporter(_msg, 0);
 
-                event Scan::m_w_portscan_update_known_scanners(orig);
+                #event Scan::m_w_portscan_update_known_scanners(orig);
+		Broker::publish(Cluster::worker_topic, Scan::m_w_portscan_update_known_scanners, orig);
 
                 if (orig !in Scan::known_scanners)
 		{ 
@@ -343,28 +346,28 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
 		} 
 
         }
-
-}
 @endif
+}
+#@endif
 
 
 # we can get away with only sending orig here since thats what is used to update
 # known_scanners table on workers , we are still sending d_port, resp
 # for debugging assurances
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_portscan_update_known_scanners(orig: addr)
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 
         if (orig !in Scan::known_scanners)
                 Scan::known_scanners[orig]$status = T ;
         
 	local msg = fmt ("portscan: added m_w_portscan_update_known_scanners for: %s, %s, %s", orig, Scan::known_scanners[orig], |Scan::known_scanners[orig]|);
         log_reporter(msg, 0);
-
-}
 @endif
+}
+#@endif
 
 
 

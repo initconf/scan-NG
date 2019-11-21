@@ -18,7 +18,8 @@ event NetControl::catch_release_forgotten (a: addr, bi: BlockInfo)
         {
                 Scan::known_scanners[a]$status = F ;
                 ### send the status to all workers ;
-                event Scan::m_w_update_scanner(a, F );
+                #event Scan::m_w_update_scanner(a, F );
+		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, a, F );
                 Scan::log_reporter(fmt ("netcontro: catch_release_forgotten: m_w_update_scanner: F %s", a),1);
         }
         else
@@ -38,7 +39,8 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
         {
                 Scan::known_scanners[ip]$status = T ;
                 ### send the status to all workers ;
-                event Scan::m_w_update_scanner(ip, T );
+                #event Scan::m_w_update_scanner(ip, T );
+		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, ip, T );
                 Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: T %s", ip),1);
         }
 
@@ -59,7 +61,8 @@ event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="")
 #	{ 	
 #		Scan::known_scanners[ip]$status = F ; 
 #		### send the status to all workers ;  
-#		event Scan::m_w_update_scanner(ip, F ); 
+#		#event Scan::m_w_update_scanner(ip, F ); 
+#		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, ip, F );
 #		Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: F %s", ip),1);
 #	} 
 #	else 	

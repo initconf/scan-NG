@@ -22,7 +22,7 @@ global check_scan: function (c: connection, established: bool, reverse: bool);
 
 global uid_table: table[string] of bool &default=F &create_expire=5 mins ;
 
-event bro_init()
+event zeek_init()
 { 
 	event table_sizes() ; 
 }	

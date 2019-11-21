@@ -55,6 +55,7 @@ event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="")
 
 	#### no need to send this - we piggyback on m_w_update_scanner 
 	##### event Scan::m_w_send_scan_summary_stats(ip, T); 
+	##### Broker::publish(Cluster::worker_topic, Scan::m_w_send_scan_summary_stats, ip, T );
 	###	Scan::log_reporter(fmt ("netcontro: acld_remove: m_w_send_known_scan_stats: %s", subnet_to_addr(r$entity$ip)),1);
 
 	### re-enabling scan-detection once netcontrol block is removed 

@@ -1,3 +1,12 @@
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Site; 
 
 export {
@@ -23,7 +32,7 @@ export {
 } 
 
 
-event bro_init() &priority=5
+event zeek_init() &priority=5
 {
         Log::create_stream(Site::host_open_ports_LOG, [$columns=Info]);
 
@@ -53,8 +62,8 @@ function log_host_profiles(cid: conn_id)
 
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Site::m_w_add_host_profiles/;
-redef Cluster::worker2manager_events += /Site::w_m_new_host_profile/;
+#redef Cluster::manager2worker_events += /Site::m_w_add_host_profiles/;
+#redef Cluster::worker2manager_events += /Site::w_m_new_host_profile/;
 @endif
 
 
@@ -83,15 +92,17 @@ function add_to_host_profile_cache(cid: conn_id)
 
 
 @if ( Cluster::is_enabled() )
-        event Site::w_m_new_host_profile(cid);
+        #event Site::w_m_new_host_profile(cid);
+	Broker::publish(Cluster::manager_topic, Site::w_m_new_host_profile, cid);
 @endif
         }
 }
 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Site::w_m_new_host_profile(cid: conn_id)
 {
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
         local orig = cid$orig_h ;
         local resp = cid$resp_h ;
         local d_port = cid$resp_p;
@@ -107,12 +118,14 @@ event Site::w_m_new_host_profile(cid: conn_id)
 		log_host_profiles(cid); 
 	} 
 	event Site::m_w_add_host_profiles(cid);
-}
 @endif
+}
+#@endif
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Site::m_w_add_host_profiles(cid: conn_id)
 {
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
         local orig = cid$orig_h ;
         local resp = cid$resp_h ;
         local d_port = cid$resp_p;
@@ -126,8 +139,9 @@ event Site::m_w_add_host_profiles(cid: conn_id)
 	{
 		add host_profiles[resp][d_port] ;
 	} 
-}
 @endif
+}
+#@endif
 
 
 

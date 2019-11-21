@@ -1,6 +1,15 @@
 module Scan ;
 
 @load ./debug.bro 
+
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
 	
 #redef exit_only_after_terminate = T ; 
 
@@ -95,7 +104,7 @@ export {
 } 
 
 
-event bro_init() &priority=5 
+event zeek_init() &priority=5 
 {
 	Log::create_stream(Scan::summary_LOG, [$columns=scan_stats_log]); 
 } 
@@ -121,7 +130,7 @@ function initialize_scan_summary(idx: addr)
 
 ##### expire_func for conn_table to update or populate scan_summary on workers 
 
-#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) 
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) 
 function report_conn_stats(t: table[addr] of count, idx: addr): interval 
 { 
 	if (idx in Scan::known_scanners) 
@@ -143,9 +152,10 @@ function scan_summary_inactive(t: table[addr] of scan_stats, idx: addr): interva
 
 ### may be was a bad idea below but now resorting to this 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 	workers_update_scan_summary(idx); 
-	event Scan::w_m_update_scan_summary_stats(idx, t[idx]); 
+	#event Scan::w_m_update_scan_summary_stats(idx, t[idx]); 
+	Broker::publish(Cluster::manager_topic, Scan::w_m_update_scan_summary_stats, idx, t[idx]);
 	
 	return 0 sec ; 
 
@@ -306,8 +316,8 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 
 @if (  Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_send_scan_summary_stats/ ; 
-redef Cluster::worker2manager_events += /Scan::w_m_update_scan_summary_stats/ ; 
+#redef Cluster::manager2worker_events += /Scan::m_w_send_scan_summary_stats/ ; 
+#redef Cluster::worker2manager_events += /Scan::w_m_update_scan_summary_stats/ ; 
 @endif 
 
 
@@ -367,25 +377,27 @@ function manager_update_scan_summary(idx: addr, stats: scan_stats)
 
 }
 
-@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )  || (! Cluster::is_enabled()) ) 
+#@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )  || (! Cluster::is_enabled()) ) 
 event Scan::w_m_update_scan_summary_stats(idx: addr, stats: scan_stats)
 {
-
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )  || (! Cluster::is_enabled()) ) 
 	#log_reporter(fmt("scan-summary->w_m_update_scan_summary_stats got stats %s for %s", stats, idx),5); 
 
 	if (idx in known_scanners)
 		manager_update_scan_summary(idx, stats); 
-
-}
 @endif
+}
+#@endif
 
-@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
+#@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event Scan::m_w_send_scan_summary_stats(scanner: addr, send_status: bool )
 {
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) || (! Cluster::is_enabled()) )
 	return ; 
+@endif
 } 
 
-@endif
+#@endif
 
 
 

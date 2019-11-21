@@ -243,7 +243,7 @@ event Scan::w_m_update_scanner(ss: scan_info)
 
 event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 { 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 
 	#log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s", ip, status_flag), 0);
 	

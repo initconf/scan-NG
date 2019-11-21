@@ -117,7 +117,9 @@ event Site::w_m_new_host_profile(cid: conn_id)
 		add host_profiles[resp][d_port] ;
 		log_host_profiles(cid); 
 	} 
-	event Site::m_w_add_host_profiles(cid);
+	#event Site::m_w_add_host_profiles(cid);
+	Broker::publish(Cluster::worker_topic, Site::m_w_add_host_profiles, cid);
+	
 @endif
 }
 #@endif

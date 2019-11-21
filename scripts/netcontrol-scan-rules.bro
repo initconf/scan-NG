@@ -32,6 +32,7 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
         {
 	 local ip = subnet_to_addr(r$entity$ip) ; 
 	 #event Scan::m_w_send_known_scan_stats(ip, T); 
+	 #Broker::publish(Cluster::worker_topic, Scan::m_w_send_known_scan_stats, ip, T );
 	 #Scan::log_reporter(fmt ("netcontro: m_w_send_known_scan_stats: %s", subnet_to_addr(r$entity$ip)),1);
 	 Scan::log_reporter(fmt ("acld_rule_added: Rule: %s, %s", subnet_to_addr(r$entity$ip), r),1);
 

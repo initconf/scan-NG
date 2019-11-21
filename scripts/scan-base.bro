@@ -125,8 +125,8 @@ export {
 
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
-redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
+#redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
 @endif
 
 
@@ -172,7 +172,8 @@ function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interv
 	### sending message to all workers to delete this scanner 
 	### since its inactive now 
 
-	event Scan::m_w_remove_scanner(idx); 
+	#event Scan::m_w_remove_scanner(idx); 
+	Broker::publish(Cluster::worker_topic, Scan::m_w_remove_scanner, idx);
 
 	### delete from the manager too 
 
@@ -297,7 +298,7 @@ function print_state(s: count, t: transport_proto): string
 }
 
 
-event table_sizes()
+event Scan::table_sizes()
 {
 
 	return ; 
@@ -331,7 +332,7 @@ event table_sizes()
 	#log_reporter(fmt("table_size: whitelist_ip_table: %s",|whitelist_ip_table|),0);
 	#log_reporter(fmt("table_size: whitelist_subnet_table: %s",|whitelist_subnet_table|),0);
 
-	schedule 10 mins { table_sizes() } ; 
+	schedule 10 mins { Scan::table_sizes() } ; 
 
 } 
 

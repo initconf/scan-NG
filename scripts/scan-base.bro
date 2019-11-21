@@ -44,7 +44,7 @@ export {
 	### workers will keep known_scanners until manager sends m_w_remove_scanner event 
 	### when manager calls known_scanners_inactive event 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
         global known_scanners: table[addr] of scan_info ; 
 @endif 
 

@@ -1,6 +1,15 @@
 ### this is the core module which integrates and enables and disables 
 ### all the scan-detection suite 
 
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Scan;
 
 export { 

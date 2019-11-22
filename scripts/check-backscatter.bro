@@ -99,7 +99,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
 	local result = F; 
 	
         if ( orig !in distinct_backscatter_peers)
-                distinct_backscatter_peers[orig] = table() &mergeable;
+                distinct_backscatter_peers[orig] = table() ; ##&mergeable;
 
 	if (|distinct_backscatter_peers[orig]| > BACKSCATTER_PORT_THRESH)
 	{ return F ; } 
@@ -110,7 +110,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
         if (|distinct_backscatter_peers[orig]| <= BACKSCATTER_PORT_THRESH)
         {
 		if (rev_svc !in distinct_backscatter_peers[orig]) 
-			distinct_backscatter_peers[orig][rev_svc] = set() &mergeable;
+			distinct_backscatter_peers[orig][rev_svc] = set() ; ##&mergeable;
 
                 if ( resp !in distinct_backscatter_peers[orig][rev_svc] )
                 {

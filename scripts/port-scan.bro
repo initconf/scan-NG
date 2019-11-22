@@ -126,7 +126,6 @@ function check_lowporttrolling(orig: addr, service: port, resp: addr): bool
 
 			local svrc_msg = fmt("low port trolling %s %s", orig, s);
 			NOTICE([$note=LowPortTrolling, $src=orig,
-				$src_peer=get_local_event_peer(), 
 				$p=service, $msg=svrc_msg]);
 
 			troll = T ; 
@@ -162,7 +161,6 @@ function check_portscan_thresh(orig: addr, service:port, resp: addr): bool
 			local m = |scan_triples[orig][resp]|;
 			NOTICE([$note=PortScan, $n=m, $src=orig,
 				$p=service,
-				$src_peer=get_local_event_peer(), 
 				$msg=fmt("%s has scanned %d ports of %s",
 				orig, m, resp)]);
 			return T ; 

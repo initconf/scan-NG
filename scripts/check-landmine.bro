@@ -70,7 +70,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	} 
 	
 #	if ([orig] !in landmine_distinct_peers)
-#		landmine_distinct_peers[orig]=set() &mergeable;
+#		landmine_distinct_peers[orig]=set() ; ##&mergeable;
 #			
 #	if([resp] !in landmine_distinct_peers[orig])
 #	{

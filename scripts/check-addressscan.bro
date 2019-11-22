@@ -273,7 +273,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 			if (enable_big_tables) 
 			{ 
 				if ( orig !in distinct_peers )
-					distinct_peers[orig] = set() &mergeable;
+					distinct_peers[orig] = set() ; ##&mergeable;
 
 				if ( resp !in distinct_peers[orig] )
 					add distinct_peers[orig][resp];
@@ -363,7 +363,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #		        { return; }
 #
 #        if ([orig] !in distinct_peers)
-#                distinct_peers[orig]=set() &mergeable;
+#                distinct_peers[orig]=set() ; ##&mergeable;
 #
 #        add distinct_peers[orig][resp];
 #

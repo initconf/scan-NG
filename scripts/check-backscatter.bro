@@ -75,7 +75,7 @@ function c_check_backscatter_thresholds(orig: addr, s_port: port, resp: addr): b
                         {
                                 #print fmt("CARDINAL: backscatter seen from %s (%d port: %s)", orig, |distinct_backscatter_peers[orig]|, s_port) ;
 				NOTICE([$note=BackscatterSeen, $src=orig,
-                                                $p=s_port, $src_peer=get_local_event_peer(),
+                                                $p=s_port,
                                                 $msg=fmt("backscatter seen from %s (%d port: %s)",
                                                         orig, d_val, s_port)]);
 
@@ -119,7 +119,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
                         if (|distinct_backscatter_peers[orig][rev_svc][resp]| >= BACKSCATTER_THRESH)
                         {
                                 NOTICE([$note=BackscatterSeen, $src=orig,
-                                                $p=rev_svc, $src_peer=get_local_event_peer(), 
+                                                $p=rev_svc, 
                                                 $msg=fmt("backscatter seen from %s (%d port: %s)",
                                                         orig, |distinct_backscatter_peers[orig]|, rev_svc)]);
 				## is a scanner now 

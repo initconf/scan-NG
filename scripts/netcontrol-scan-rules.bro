@@ -1,3 +1,6 @@
+@load base/frameworks/cluster
+@load base/frameworks/netcontrol
+@load policy/frameworks/netcontrol/catch-and-release
 
 module NetControl; 
 

@@ -384,7 +384,7 @@ function hot_subnet_check(ip: addr)
 	{ 
 		local _msg = fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
 	
-		NOTICE([$note=HotSubnet,  $src_peer=get_local_event_peer(), $src=ip, $msg=fmt("%s", _msg)]);
+		NOTICE([$note=HotSubnet, $src=ip, $msg=fmt("%s", _msg)]);
 	} 
 
 }

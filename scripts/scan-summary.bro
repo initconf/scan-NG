@@ -350,7 +350,7 @@ function manager_update_scan_summary(idx: addr, stats: scan_stats)
 		 ### add to the previous counts 
 		Scan::scan_summary[idx]$total_conn = Scan::scan_summary[idx]$total_conn + stats$total_conn;
 
-	        Scan::scan_summary[idx]$event_peer = stats?$event_peer ? stats$event_peer : fmt ("%s",get_event_peer()$descr);
+	        Scan::scan_summary[idx]$event_peer = stats?$event_peer ? stats$event_peer : fmt ("");
 
 		hll_cardinality_merge_into(scan_summary[idx]$hosts, stats$hosts); 
 

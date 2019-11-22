@@ -24,7 +24,7 @@ global uid_table: table[string] of bool &default=F &create_expire=5 mins ;
 
 event zeek_init()
 { 
-	event table_sizes() ; 
+	event Scan::table_sizes() ; 
 }	
 
 ## Checks if a perticular connection is already blocked and managed by netcontrol

@@ -56,7 +56,7 @@ export {
 
 	const conn_table_create_expire: interval = 20 mins &redef; 
 
-        global report_conn_stats: function(t: table[addr] of count, idx: addr): interval;
+        global report_conn_stats: function(t: table[addr] of conn_stats, idx: addr): interval;
 	global conn_table: table[addr] of conn_stats 
 			&create_expire=conn_table_create_expire &expire_func=report_conn_stats ; 
 
@@ -131,7 +131,7 @@ function initialize_scan_summary(idx: addr)
 ##### expire_func for conn_table to update or populate scan_summary on workers 
 
 #@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) 
-function report_conn_stats(t: table[addr] of count, idx: addr): interval 
+function report_conn_stats(t: table[addr] of conn_stats, idx: addr): interval 
 { 
 	if (idx in Scan::known_scanners) 
 	{ 

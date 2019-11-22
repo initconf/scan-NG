@@ -1,5 +1,14 @@
 #redef exit_only_after_terminate=T ;
 
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Scan;
 
 export {
@@ -44,11 +53,20 @@ event port_exclude(description: Input::TableDescription, tpe: Input::Event, left
 	} 
 }
 
-event bro_init() {
+event zeek_init() {
 	Input::add_table([$source=portexclude_file, $mode=Input::REREAD, $name="port_exclude", $destination=port_exclude_table, $idx=Idx, $val=portexclude_Val, $ev=port_exclude]);
 }
 
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+event zeek_done()
 {
 
 	for (p in skip_services) 

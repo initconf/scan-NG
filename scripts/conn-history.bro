@@ -19,7 +19,7 @@ export {
 
 	global blocked_scanners : opaque of bloomfilter ; 
 	global ever_touched : opaque of bloomfilter ; 
-	global initialized_bloom: bool = F  &persistent ; 
+	global initialized_bloom: bool = F ;  ##&persistent ; 
 
 	redef enum Notice::Type += {
 	  SF_to_Scanner, # If ever a TCP_ESTABLISHED to the potential Scanner

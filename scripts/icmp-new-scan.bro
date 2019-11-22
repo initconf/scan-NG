@@ -75,7 +75,7 @@ function check_scan(orig: addr, resp: addr):bool
                 {
                 if ( orig !in ICMP::distinct_peers )
                         {
-                        local empty_peer_set: set[addr] &mergeable;
+                        local empty_peer_set: set[addr] ; ##&mergeable;
                         ICMP::distinct_peers[orig] = empty_peer_set;
                         }
 
@@ -114,7 +114,7 @@ event icmp_echo_request(c: connection, icmp: icmp_conn, id: count, seq: count, p
                 {
                 if ( orig !in conn_pair )
                         {
-                        local empty_peer_set2: set[addr] &mergeable;
+                        local empty_peer_set2: set[addr] ; ##&mergeable;
                         conn_pair[orig] = empty_peer_set2;
                         }
 

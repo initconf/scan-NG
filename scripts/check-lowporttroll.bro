@@ -64,7 +64,7 @@ function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): boo
 	     service !in distinct_low_ports[orig] )
 		{
 		if ( orig !in distinct_low_ports )
-			distinct_low_ports[orig] = set() &mergeable;
+			distinct_low_ports[orig] = set() ; ##&mergeable;
 
 		add distinct_low_ports[orig][service];
 
@@ -76,8 +76,7 @@ function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): boo
 
 
 			local svrc_msg = fmt("low port trolling %s %s", orig, s);
-			NOTICE([$note=LowPortTrolling, $src=orig,
-				$src_peer=get_local_event_peer(), 
+			NOTICE([$note=LowPortTrolling, $src=orig, 
 				$p=service, $msg=svrc_msg]);
 
 			troll = T ; 

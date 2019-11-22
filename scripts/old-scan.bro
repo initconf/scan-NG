@@ -385,7 +385,7 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 				{ # XXXXX
 
 				if ( orig !in distinct_peers )
-					distinct_peers[orig] = set() &mergeable;
+					distinct_peers[orig] = set() ; ##&mergeable;
 
 				if ( resp !in distinct_peers[orig] )
 					add distinct_peers[orig][resp];
@@ -454,7 +454,7 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 	if ( orig !in distinct_ports || service !in distinct_ports[orig] )
 		{
 		if ( orig !in distinct_ports )
-			distinct_ports[orig] = set() &mergeable;
+			distinct_ports[orig] = set() ; ##&mergeable;
 
 		if ( service !in distinct_ports[orig] )
 			add distinct_ports[orig][service];
@@ -462,7 +462,7 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 		if ( |distinct_ports[orig]| >= possible_port_scan_thresh &&
 			orig !in scan_triples )
 			{
-			scan_triples[orig] = table() &mergeable;
+			scan_triples[orig] = table() ; ##&mergeable;
 			add possible_scan_sources[orig];
 			}
 		}
@@ -475,7 +475,7 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 		     service !in distinct_low_ports[orig] )
 			{
 			if ( orig !in distinct_low_ports )
-				distinct_low_ports[orig] = set() &mergeable;
+				distinct_low_ports[orig] = set() ; ##&mergeable;
 
 			add distinct_low_ports[orig][service];
 
@@ -503,10 +503,10 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 	if ( orig in possible_scan_sources )
 		{
 		if ( orig !in scan_triples )
-			scan_triples[orig] = table() &mergeable;
+			scan_triples[orig] = table() ; ##&mergeable;
 
 		if ( resp !in scan_triples[orig] )
-			scan_triples[orig][resp] = set() &mergeable;
+			scan_triples[orig][resp] = set() ; ##&mergeable;
 
 		if ( service !in scan_triples[orig][resp] )
 			{
@@ -706,8 +706,17 @@ event connection_pending(c: connection)
 		OldScan::check_scan(c, F, F);
 	}
 
-# Report the remaining entries in the tables.
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+# Report the remaining entries in the tables.
+event zeek_done()
 	{
 	for ( orig in distinct_peers )
 		scan_summary(distinct_peers, orig);

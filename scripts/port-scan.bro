@@ -72,7 +72,7 @@ export {
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
 #redef Cluster::manager2worker_events += /Scan::m_w_portscan_update_known_scanners/;
-redef Cluster::worker2manager_events += /Scan::w_m_portscan_new/;
+#redef Cluster::worker2manager_events += /Scan::w_m_portscan_new/;
 @endif
 
 
@@ -113,7 +113,7 @@ function check_lowporttrolling(orig: addr, service: port, resp: addr): bool
 	     service !in distinct_low_ports[orig] )
 		{
 		if ( orig !in distinct_low_ports )
-			distinct_low_ports[orig] = set() &mergeable;
+			distinct_low_ports[orig] = set() ; ##&mergeable;
 
 		add distinct_low_ports[orig][service];
 
@@ -126,7 +126,6 @@ function check_lowporttrolling(orig: addr, service: port, resp: addr): bool
 
 			local svrc_msg = fmt("low port trolling %s %s", orig, s);
 			NOTICE([$note=LowPortTrolling, $src=orig,
-				$src_peer=get_local_event_peer(), 
 				$p=service, $msg=svrc_msg]);
 
 			troll = T ; 
@@ -146,10 +145,10 @@ function check_portscan_thresh(orig: addr, service:port, resp: addr): bool
 {
 
 	if ( orig !in scan_triples )
-		scan_triples[orig] = table() &mergeable;
+		scan_triples[orig] = table() ; ##&mergeable;
 
 	if ( resp !in scan_triples[orig] )
-		scan_triples[orig][resp] = set() &mergeable;
+		scan_triples[orig][resp] = set() ; ##&mergeable;
 
 	if ( service !in scan_triples[orig][resp] )
 	{
@@ -162,7 +161,6 @@ function check_portscan_thresh(orig: addr, service:port, resp: addr): bool
 			local m = |scan_triples[orig][resp]|;
 			NOTICE([$note=PortScan, $n=m, $src=orig,
 				$p=service,
-				$src_peer=get_local_event_peer(), 
 				$msg=fmt("%s has scanned %d ports of %s",
 				orig, m, resp)]);
 			return T ; 
@@ -212,7 +210,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 	if ( orig !in distinct_ports || service !in distinct_ports[orig] )
 		{
 		if ( orig !in distinct_ports )
-			distinct_ports[orig] = set() &mergeable;
+			distinct_ports[orig] = set() ; ##&mergeable;
 
 		if ( service !in distinct_ports[orig] )
 			add distinct_ports[orig][service];
@@ -220,7 +218,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 		if ( |distinct_ports[orig]| >= possible_port_scan_thresh &&
 			orig !in scan_triples )
 			{
-			scan_triples[orig] = table() &mergeable;
+			scan_triples[orig] = table() ; ##&mergeable;
 			add possible_scan_sources[orig];
 			}
 		}
@@ -244,17 +242,18 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 	local _msg = fmt (" add_to_likely_scanner: calling w_m_portscan_new for %s, %s, %s", orig, service, resp);
 	log_reporter(_msg, 0); 
 	
-	event Scan::w_m_portscan_new(orig, service, resp, outbound);
+	#event Scan::w_m_portscan_new(orig, service, resp, outbound);
+	Broker::publish(Cluster::manager_topic, Scan::w_m_portscan_new, orig, service, resp, outbound);
 @endif 
 	}	# end if established 
 } 
 
 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bool)
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
         local msg = fmt (" inside w_m_portscan_new for %s, %s, %s", orig, service, resp);
         log_reporter(msg, 0);
 
@@ -269,7 +268,7 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
 	  if ( orig !in distinct_ports || service !in distinct_ports[orig] )
                 {
                 if ( orig !in distinct_ports )
-                        distinct_ports[orig] = set() &mergeable;
+                        distinct_ports[orig] = set() ; ##&mergeable;
 
                 if ( service !in distinct_ports[orig] )
                         add distinct_ports[orig][service];
@@ -277,7 +276,7 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
                 if ( |distinct_ports[orig]| >= possible_port_scan_thresh &&
                         orig !in scan_triples )
                         {
-                        scan_triples[orig] = table() &mergeable;
+                        scan_triples[orig] = table() ; ##&mergeable;
                         add possible_scan_sources[orig];
                         }
                 }
@@ -302,7 +301,8 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
                 local _msg = fmt ("w_m_portscan_new: calling m_w_portscan_update_known_scanners for: %s, %s, %s", orig, service, resp);
                 log_reporter(_msg, 0);
 
-                event Scan::m_w_portscan_update_known_scanners(orig);
+                #event Scan::m_w_portscan_update_known_scanners(orig);
+		Broker::publish(Cluster::worker_topic, Scan::m_w_portscan_update_known_scanners, orig);
 
                 if (orig !in Scan::known_scanners)
 		{ 
@@ -316,28 +316,28 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
 		} 
 
         }
-
-}
 @endif
+}
+#@endif
 
 
 # we can get away with only sending orig here since thats what is used to update
 # known_scanners table on workers , we are still sending d_port, resp
 # for debugging assurances
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_portscan_update_known_scanners(orig: addr)
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 
         if (orig !in Scan::known_scanners)
                 Scan::known_scanners[orig]$status = T ;
         
 	local msg = fmt ("portscan: added m_w_portscan_update_known_scanners for: %s, %s, %s", orig, Scan::known_scanners[orig], |Scan::known_scanners[orig]|);
         log_reporter(msg, 0);
-
-}
 @endif
+}
+#@endif
 
 
 

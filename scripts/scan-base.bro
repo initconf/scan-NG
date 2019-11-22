@@ -109,6 +109,8 @@ export {
 	global dont_drop: function(a: addr): bool ; 
 	global can_drop_connectivity = F &redef ; 
 	global dont_drop_locals = T &redef ; 
+	
+	global Scan::table_sizes: event ();
 
 
 }  #### end of export 
@@ -125,8 +127,8 @@ export {
 
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
-redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
+#redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
 @endif
 
 
@@ -172,7 +174,8 @@ function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interv
 	### sending message to all workers to delete this scanner 
 	### since its inactive now 
 
-	event Scan::m_w_remove_scanner(idx); 
+	#event Scan::m_w_remove_scanner(idx); 
+	Broker::publish(Cluster::worker_topic, Scan::m_w_remove_scanner, idx);
 
 	### delete from the manager too 
 
@@ -297,7 +300,7 @@ function print_state(s: count, t: transport_proto): string
 }
 
 
-event table_sizes()
+event Scan::table_sizes()
 {
 
 	return ; 
@@ -331,7 +334,7 @@ event table_sizes()
 	#log_reporter(fmt("table_size: whitelist_ip_table: %s",|whitelist_ip_table|),0);
 	#log_reporter(fmt("table_size: whitelist_subnet_table: %s",|whitelist_subnet_table|),0);
 
-	schedule 10 mins { table_sizes() } ; 
+	schedule 10 mins { Scan::table_sizes() } ; 
 
 } 
 
@@ -383,7 +386,7 @@ function hot_subnet_check(ip: addr)
 	{ 
 		local _msg = fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
 	
-		NOTICE([$note=HotSubnet,  $src_peer=get_local_event_peer(), $src=ip, $msg=fmt("%s", _msg)]);
+		NOTICE([$note=HotSubnet, $src=ip, $msg=fmt("%s", _msg)]);
 	} 
 
 }

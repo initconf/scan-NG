@@ -273,7 +273,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 			if (enable_big_tables) 
 			{ 
 				if ( orig !in distinct_peers )
-					distinct_peers[orig] = set() &mergeable;
+					distinct_peers[orig] = set() ; ##&mergeable;
 
 				if ( resp !in distinct_peers[orig] )
 					add distinct_peers[orig][resp];
@@ -289,8 +289,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 					if ((service in likely_server_ports && n > 99) || (service !in likely_server_ports)) 
 					{ 
 						NOTICE([$note=AddressScan,
-							$src=orig, $p=service, $n=n,
-							$src_peer=get_local_event_peer(), 
+							$src=orig, $p=service, $n=n, 
 							$msg=fmt("%s has scanned %d hosts (%s)", orig, n, service)]);
 					 
 						log_reporter (fmt ("NOTICE: FOUND AddressScan: %s", orig),0);
@@ -321,7 +320,6 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 				log_reporter(fmt("AddressScan NOTICE %s has scanned %d hosts (%s)", orig, d_val, service),0); 
                                NOTICE([$note=AddressScan,
                                        $src=orig, $p=service, $n=d_val,
-                                       $src_peer=get_local_event_peer(),
                                        $msg=fmt("%s has scanned %d hosts (%s)", orig, d_val, service)]);
 
                                result = T ;
@@ -365,7 +363,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #		        { return; }
 #
 #        if ([orig] !in distinct_peers)
-#                distinct_peers[orig]=set() &mergeable;
+#                distinct_peers[orig]=set() ; ##&mergeable;
 #
 #        add distinct_peers[orig][resp];
 #

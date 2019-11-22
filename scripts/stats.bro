@@ -1,3 +1,12 @@
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Scan; 
 
 export {
@@ -46,6 +55,7 @@ export {
 
 	global stat_freq = 1 hrs ; 
 	global s_counters : scan_counters ; 
+	global Scan::dump_stats: event();
 
 	global aggregate_workers: table[string] of bool &default=F ; 
 
@@ -56,19 +66,20 @@ export {
 }  
 
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
-event dump_stats()
+event Scan::dump_stats()
 {
 	#log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
-	event Scan::m_w_send_performance_counters(T); 
+	#event Scan::m_w_send_performance_counters(T); 
+	Broker::publish(Cluster::worker_topic, Scan::m_w_send_performance_counters, T);
 
-	schedule stat_freq { dump_stats() }; 	
+	schedule stat_freq { Scan::dump_stats() }; 	
 } 
 
 
-event bro_init()
+event zeek_init()
 {
 	if (gather_statistics)
-		schedule stat_freq { dump_stats() }; 	
+		schedule stat_freq { Scan::dump_stats() }; 	
 
 } 
 
@@ -78,27 +89,27 @@ event bro_init()
 
 @if (  Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_send_performance_counters/ ;
-redef Cluster::worker2manager_events += /Scan::w_m_update_performance_counters/ ;
+#redef Cluster::manager2worker_events += /Scan::m_w_send_performance_counters/ ;
+#redef Cluster::worker2manager_events += /Scan::w_m_update_performance_counters/ ;
 @endif
 
 
-@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
-
+#@if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event Scan::m_w_send_performance_counters(send: bool)
 {
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) || (! Cluster::is_enabled()) )
 	worker_count = 0 ; 
 	#log_reporter(fmt ("m_w_send_performance_counters calling w_m_update_performance_counters" ),0); 
-	event Scan::w_m_update_performance_counters(s_counters); 
-}
-
+	#event Scan::w_m_update_performance_counters(s_counters); 
+	Broker::publish(Cluster::manager_topic, Scan::w_m_update_performance_counters, s_counters);
 @endif 
+}
+#@endif 
 
-@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
-
+#@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
-
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 #	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
 	log_reporter(fmt("Got counters: %s", sc),0); 
 
@@ -183,9 +194,9 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 	} 
 
 #	log_reporter(fmt ("II + inside w_m_update_performance_counters : %s", sc),0); 
-} 
-
 @endif 
+} 
+#@endif 
 
 
 

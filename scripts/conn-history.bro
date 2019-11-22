@@ -2,6 +2,15 @@ module History;
 
 @load ./debug.bro 
 
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 export {
 	const DEBUG = 0 ; 
 
@@ -10,15 +19,15 @@ export {
 
 	global blocked_scanners : opaque of bloomfilter ; 
 	global ever_touched : opaque of bloomfilter ; 
-	global initialized_bloom: bool = F  &persistent ; 
+	global initialized_bloom: bool = F ;  ##&persistent ; 
 
 	redef enum Notice::Type += {
 	  SF_to_Scanner, # If ever a TCP_ESTABLISHED to the potential Scanner
 	  LongDuration, 
 	} ; 
 
-	global m_w_add: event (ip: addr);
-	global w_m_new: event (ip: addr);
+	global History::m_w_add: event (ip: addr);
+	global History::w_m_new: event (ip: addr);
         global add_to_bloom: function(ip: addr);
 
 	global check_conn_history: function (ip: addr): bool ; 
@@ -56,7 +65,7 @@ function check_conn_history(ip: addr): bool
 	return result ; 
 } 
 
-event bro_init()
+event zeek_init()
 {
 	# on avg we see 6.2M ip address a day 2016-04-01
 	# so setting bloom to 40M 
@@ -73,8 +82,8 @@ event bro_init()
 
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /History::m_w_add/;
-redef Cluster::worker2manager_events += /History::w_m_new/;
+#redef Cluster::manager2worker_events += /History::m_w_add/;
+#redef Cluster::worker2manager_events += /History::w_m_new/;
 @endif
 
 
@@ -87,7 +96,8 @@ function add_to_bloom(ip: addr)
 		bloomfilter_add(tcp_outgoing_SF, ip);
 
 @if ( Cluster::is_enabled() )
-	        event History::w_m_new(ip);
+	        #event History::w_m_new(ip);
+		Broker::publish(Cluster::manager_topic, History::w_m_new, ip);
         	#log_reporter(fmt ("add_to_bloom %s", ip), 0);
 @endif
 	} 
@@ -95,13 +105,15 @@ function add_to_bloom(ip: addr)
 }
 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event History::w_m_new(ip: addr)
 {
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 	#log_reporter(fmt ("History: w_m_new: %s", ip), 0);
 	bloomfilter_add(tcp_outgoing_SF, ip);
-}
 @endif
+}
+#@endif
 
 
 # so that we have all the flags etc

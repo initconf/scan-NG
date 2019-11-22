@@ -1,3 +1,6 @@
+@load base/frameworks/cluster
+@load base/frameworks/netcontrol
+@load policy/frameworks/netcontrol/catch-and-release
 
 module NetControl; 
 
@@ -18,7 +21,8 @@ event NetControl::catch_release_forgotten (a: addr, bi: BlockInfo)
         {
                 Scan::known_scanners[a]$status = F ;
                 ### send the status to all workers ;
-                event Scan::m_w_update_scanner(a, F );
+                #event Scan::m_w_update_scanner(a, F );
+		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, a, F );
                 Scan::log_reporter(fmt ("netcontro: catch_release_forgotten: m_w_update_scanner: F %s", a),1);
         }
         else
@@ -31,6 +35,7 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
         {
 	 local ip = subnet_to_addr(r$entity$ip) ; 
 	 #event Scan::m_w_send_known_scan_stats(ip, T); 
+	 #Broker::publish(Cluster::worker_topic, Scan::m_w_send_known_scan_stats, ip, T );
 	 #Scan::log_reporter(fmt ("netcontro: m_w_send_known_scan_stats: %s", subnet_to_addr(r$entity$ip)),1);
 	 Scan::log_reporter(fmt ("acld_rule_added: Rule: %s, %s", subnet_to_addr(r$entity$ip), r),1);
 
@@ -38,7 +43,8 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
         {
                 Scan::known_scanners[ip]$status = T ;
                 ### send the status to all workers ;
-                event Scan::m_w_update_scanner(ip, T );
+                #event Scan::m_w_update_scanner(ip, T );
+		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, ip, T );
                 Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: T %s", ip),1);
         }
 
@@ -52,6 +58,7 @@ event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="")
 
 	#### no need to send this - we piggyback on m_w_update_scanner 
 	##### event Scan::m_w_send_scan_summary_stats(ip, T); 
+	##### Broker::publish(Cluster::worker_topic, Scan::m_w_send_scan_summary_stats, ip, T );
 	###	Scan::log_reporter(fmt ("netcontro: acld_remove: m_w_send_known_scan_stats: %s", subnet_to_addr(r$entity$ip)),1);
 
 	### re-enabling scan-detection once netcontrol block is removed 
@@ -59,7 +66,8 @@ event NetControl::rule_removed(r: Rule, p: PluginState, msg: string &default="")
 #	{ 	
 #		Scan::known_scanners[ip]$status = F ; 
 #		### send the status to all workers ;  
-#		event Scan::m_w_update_scanner(ip, F ); 
+#		#event Scan::m_w_update_scanner(ip, F ); 
+#		Broker::publish(Cluster::worker_topic, Scan::m_w_update_scanner, ip, F );
 #		Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: F %s", ip),1);
 #	} 
 #	else 	

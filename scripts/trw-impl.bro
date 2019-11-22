@@ -1,5 +1,14 @@
 # $Id: trw.bro 2911 2006-05-06 17:58:43Z vern $
 
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module TRW;
 
 export {
@@ -61,10 +70,9 @@ global honeypot: set[addr];
 global eta_zero: double;	# initialized when Bro starts
 global eta_one: double;
 
-event bro_init()
+event zeek_init()
 	{
-	eta_zero =
-		(1 - target_detection_prob) / (1 - target_false_positive_prob);
+	eta_zero = (1 - target_detection_prob) / (1 - target_false_positive_prob);
 	eta_one = target_detection_prob / target_false_positive_prob;
 	}
 

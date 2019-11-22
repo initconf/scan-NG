@@ -139,7 +139,8 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 
         ### if standalone then we check on bro node else we deligate manager to handle this
         @if ( Cluster::is_enabled() )
-                event Scan::w_m_new_scanner(ci, established, reverse, filtrator);
+                #event Scan::w_m_new_scanner(ci, established, reverse, filtrator);
+		Broker::publish(Cluster::manager_topic, Scan::w_m_new_scanner, ci, established, reverse, filtrator);
         @else
 		populate_table_start_ts(ci); 
 		run_scan_detection (ci, established, reverse, filtrator) ;
@@ -155,10 +156,11 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 ## established: bool - if connect was established 
 ## reverse: bool 
 ## filtrator: string - comprises of K,L,A,B depending on which one of the filteration was successful 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+
 event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, filtrator: string )
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 	if (gather_statistics)
        	{
        		s_counters$worker_to_manager_counter += 1;
@@ -188,33 +190,39 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 		# if successful scanner, dispatch it to all workers 
 		# this is needed to keep known_scanners table syncd on all workers 
 
-		event Scan::m_w_add_scanner(known_scanners[orig]); 
+		#event Scan::m_w_add_scanner(known_scanners[orig]); 
+		Broker::publish(Cluster::worker_topic, Scan::m_w_add_scanner, known_scanners[orig]);
+		
         }
 @endif 
 
-}
 @endif
+}
+#@endif
 
 
 ### update workers with new scanner info
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+
 event Scan::m_w_add_scanner (ss: scan_info) 
 {
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 	#log_reporter(fmt ("check-scan-impl: m_w_add_scanner: %s", ss$scanner), 0);
 
 	local orig = ss$scanner; 
 	local detection = ss$detection ; 
         Scan::add_to_known_scanners(orig, detection );
-	
+@endif	
 }
-@endif
+#@endif
 
 ## in the event when catch-n-release releases an IP - we change the known_scanners[ip]$status = F 
 ## so that workers again start sending conn_info to manager to reflag as scanner. 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
+
 event Scan::w_m_update_scanner(ss: scan_info) 
 {
-
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 	#log_reporter(fmt ("check-scan-impl: w_m_update_scanner: %s, %s", ss$scanner, ss$detection), 0);
 	if ( ss$scanner !in Scan::known_scanners) 
 	{ 
@@ -224,15 +232,18 @@ event Scan::w_m_update_scanner(ss: scan_info)
 	### now that Manager added the worker reported portscan to its known_scanner
 	#### manager needs to inform other workers of this new scanner 
 
-	event Scan::m_w_add_scanner(ss); 
+	#event Scan::m_w_add_scanner(ss); 
+	Broker::publish(Cluster::worker_topic, Scan::m_w_add_scanner, ss);
+@endif	
 } 
 
-@endif 
+#@endif 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 
 event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 { 
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 
 	#log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s", ip, status_flag), 0);
 	
@@ -242,22 +253,24 @@ event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 	} 
 	else 
 		log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s NOT found in known_scanners - PROBLEM", ip, status_flag), 0);
-
-
-} 
 @endif 
 
+} 
+#@endif 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+
+#@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_remove_scanner(ip: addr) 
 {
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 	if (ip in known_scanners)
 	{ 
 		log_reporter(fmt("m_w_remove_scanner: %s", known_scanners[ip]),0); 
 		delete known_scanners[ip] ; 
 	} 
+@endif 	
 } 
-@endif 
+#@endif 
 
 
 ## populates known_scanners table and if scan_summary is enabled then 

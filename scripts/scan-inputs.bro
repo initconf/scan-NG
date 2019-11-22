@@ -1,6 +1,13 @@
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Scan;
-
-
 #redef exit_only_after_terminate = T ; 
 
 export {
@@ -65,10 +72,9 @@ export {
 
 }
 
-
 @if ( Cluster::is_enabled() )
 @load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|update|remove)_(ip|subnet)/;
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|update|remove)_(ip|subnet)/;
 @endif
 
 event reporter_error(t: time , msg: string , location: string )
@@ -102,7 +108,8 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
                 NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
 
 	@if ( Cluster::is_enabled() )
-	        	event Scan::m_w_add_ip(ip, comment) ; 
+	        	#event Scan::m_w_add_ip(ip, comment) ; 
+			Broker::publish(Cluster::worker_topic, Scan::m_w_add_ip, ip, comment);
 	@endif	
 
         }
@@ -116,7 +123,8 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
                 NOTICE([$note=WhitelistChanged, $src=ip, $msg=fmt("%s", _msg)]);
 
 	@if ( Cluster::is_enabled() )
-	        	event Scan::m_w_update_ip(ip, comment) ; 
+	        	#event Scan::m_w_update_ip(ip, comment) ; 
+			Broker::publish(Cluster::worker_topic, Scan::m_w_update_ip, ip, comment);
 	@endif	
         }
 
@@ -130,7 +138,8 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
                 NOTICE([$note=WhitelistRemoved, $src=ip, $msg=fmt("%s", _msg)]);
 
 	@if ( Cluster::is_enabled() )
-	        	event Scan::m_w_remove_ip(ip, comment) ; 
+	        	#event Scan::m_w_remove_ip(ip, comment) ; 
+			Broker::publish(Cluster::worker_topic, Scan::m_w_remove_ip, ip, comment);
 	@endif	
         }
 	
@@ -170,7 +179,8 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
                 NOTICE([$note=WhitelistAdd, $msg=fmt("%s", _msg)]);
 		
 	@if ( Cluster::is_enabled() )
-	        	event Scan::m_w_add_subnet(nets, comment);
+	        	#event Scan::m_w_add_subnet(nets, comment);
+			Broker::publish(Cluster::worker_topic, Scan::m_w_add_subnet, nets, comment);
 	@endif	
         }
 
@@ -183,7 +193,8 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
                 NOTICE([$note=WhitelistChanged, $msg=fmt("%s", _msg)]);
 	
 	@if ( Cluster::is_enabled() )
-	        	event Scan::m_w_update_subnet(nets, comment);
+	        	#event Scan::m_w_update_subnet(nets, comment);
+			Broker::publish(Cluster::worker_topic, Scan::m_w_update_subnet, nets, comment);
 	@endif	
         }
 
@@ -195,14 +206,15 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
 		NOTICE([$note=WhitelistRemoved, $msg=fmt("%s", _msg)]);
 
 	@if ( Cluster::is_enabled() )
-		event Scan::m_w_remove_subnet(nets, comment) ; 
+		#event Scan::m_w_remove_subnet(nets, comment) ; 
+		Broker::publish(Cluster::worker_topic, Scan::m_w_remove_subnet, nets, comment);
 	@endif	
         }
 
 
 }
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER )
 event Scan::m_w_add_ip(ip: addr, comment: string)
         {
 
@@ -275,8 +287,7 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 
 				local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
 
-				NOTICE([$note=PurgeOnWhitelist, $src=ip,
-					$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+				NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
 				delete known_scanners[ip] ;
 
 				@ifdef (NetControl::unblock_address_catch_release) 
@@ -330,13 +341,21 @@ if ( ! Cluster::is_enabled() || Cluster::local_node_type() == Cluster::MANAGER )
 }
 
 
-event bro_init() &priority=5
+event zeek_init() &priority=5
 {
 schedule read_whitelist_timer  { read_whitelist() }; 
 }
 
-
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+event zeek_done()
 {
 	#for ( ip in whitelist_ip_table)
 	#{

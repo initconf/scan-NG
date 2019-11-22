@@ -1,3 +1,12 @@
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Site  ; 
 
 #redef exit_only_after_terminate = T ; 
@@ -66,7 +75,7 @@ event Input::end_of_data(name: string, source: string)
 	} 
 } 
 
-event bro_init() &priority=10
+event zeek_init() &priority=10
 {
         Input::add_table([$source=subnet_feed, $name="subnet_table", $idx=subnet_Idx, $val=subnet_Val,  $destination=subnet_table, $mode=Input::REREAD]);  
         
@@ -75,8 +84,16 @@ event bro_init() &priority=10
  #       $pred(typ: Input::Event, left: subnet_Idx, right: subnet_Val = { left$epo = to_lower(left$epo); return T;) }]);
 }
 
-
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+event zeek_done()
 {
 	#print fmt("bro-done subnet-bro"); 
 	#print fmt("digested  %s records in subnet_table", |Site::subnet_table|);

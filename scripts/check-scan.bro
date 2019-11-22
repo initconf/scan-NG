@@ -1,6 +1,15 @@
 ### this is the core module which integrates and enables and disables 
 ### all the scan-detection suite 
 
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
+event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
 module Scan;
 
 export { 
@@ -13,9 +22,9 @@ global check_scan: function (c: connection, established: bool, reverse: bool);
 
 global uid_table: table[string] of bool &default=F &create_expire=5 mins ;
 
-event bro_init()
+event zeek_init()
 { 
-	event table_sizes() ; 
+	event Scan::table_sizes() ; 
 }	
 
 ## Checks if a perticular connection is already blocked and managed by netcontrol

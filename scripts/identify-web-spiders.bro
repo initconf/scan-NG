@@ -23,7 +23,8 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 			local _msg = fmt("web-spider seeking %s", original_URI) ; 
 			NOTICE([$note=WebCrawler, $src=orig, $msg=fmt("%s", _msg)]);
                         
-			event Scan::m_w_add_ip(orig, _msg); 
+			#event Scan::m_w_add_ip(orig, _msg); 
+			Broker::publish(Cluster::worker_topic,Scan::m_w_add_ip, orig, _msg);
 		} 
 	}
 } 
@@ -40,7 +41,8 @@ event http_header(c: connection, is_orig: bool, name: string, value: string) &pr
 			{ 
 				local _msg = fmt ("%s crawler is seen: %s", orig, value); 
 				NOTICE([$note=WebCrawler, $src=orig, $msg=fmt("%s", _msg)]);
-				event Scan::m_w_add_ip(orig, _msg) ; 
+				#event Scan::m_w_add_ip(orig, _msg) ; 
+				Broker::publish(Cluster::worker_topic,Scan::m_w_add_ip, orig, _msg);
 			} 
 		} 
 } 

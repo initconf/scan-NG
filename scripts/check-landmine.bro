@@ -26,7 +26,7 @@ export
 
 	###	Expire functions that trigger summaries.
         global c_landmine_scan_summary:
-                function(t: table[addr] of set[addr], orig: addr): interval;
+                function(t: table[addr] of opaque of cardinality, orig: addr): interval;
 
 	global c_landmine_distinct_peers: table[addr] of opaque of cardinality 
 		&default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
@@ -70,7 +70,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	} 
 	
 #	if ([orig] !in landmine_distinct_peers)
-#		landmine_distinct_peers[orig]=set() &mergeable;
+#		landmine_distinct_peers[orig]=set() ; ##&mergeable;
 #			
 #	if([resp] !in landmine_distinct_peers[orig])
 #	{
@@ -86,7 +86,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 #			{ iplist += fmt (" %s", ip); }
 #
 #			local msg = fmt("landmine address trigger %s [%s] %s", orig, d_port, iplist );
-#			NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+#			NOTICE([$note=LandMine, $src=orig, $msg=msg, $identifier=cat(orig)]);
 #			log_reporter (fmt ("NOTICE: FOUND LandMine : %s", orig),0);
 #
 #			return T; 
@@ -108,7 +108,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	if (d_val  >= landmine_thresh_trigger)  
 	{	
 		local msg=fmt ("Landmine hit by %s", orig); 
-		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+		NOTICE([$note=LandMine, $src=orig, $msg=msg, $identifier=cat(orig)]);
 		log_reporter (fmt ("NOTICE: FOUND LandMine : %s, %s", orig, network_time()),0);
 		return T ; 
 

@@ -80,8 +80,8 @@ export {
 	global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; #### &synchronized ; 
 	
 	### clusterization helper events 
-	global m_w_knockscan_add: event (orig: addr, d_port: port,  resp: addr);
-	global w_m_knockscan_new: event (orig: addr, d_port: port,  resp: addr);
+	global Scan::m_w_knockscan_add: event (orig: addr, d_port: port,  resp: addr);
+	global Scan::w_m_knockscan_new: event (orig: addr, d_port: port,  resp: addr);
 	global add_to_knockknock_cache: function(orig: addr, d_port: port,  resp: addr);
 
 	global check_knockknock_scan: function(orig: addr, d_port: port, resp: addr): bool  ; 
@@ -171,8 +171,7 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 
 		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
 
-		NOTICE([$note=KnockKnockScan, $src=orig,
-				 $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
+		NOTICE([$note=KnockKnockScan, $src=orig, $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
 		log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
 	} 
@@ -314,8 +313,16 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 
 }
 
-
+@ifndef(zeek_init)
+#Running on old bro that doesn't know about zeek events
+global zeek_init: event();
 event bro_init()
+{
+    event zeek_init();
+}
+@endif
+
+event zeek_init()
 {
 
 Input::add_table([$source=ipportexclude_file, $name="ipportexclude", $idx=ipportexclude_Idx, $val=ipportexclude_Val,  $destination=ipportexclude, $mode=Input::REREAD ]);

@@ -109,6 +109,8 @@ export {
 	global dont_drop: function(a: addr): bool ; 
 	global can_drop_connectivity = F &redef ; 
 	global dont_drop_locals = T &redef ; 
+	
+	global Scan::table_sizes: event ();
 
 
 }  #### end of export 

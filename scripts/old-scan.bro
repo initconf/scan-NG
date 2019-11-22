@@ -706,8 +706,17 @@ event connection_pending(c: connection)
 		OldScan::check_scan(c, F, F);
 	}
 
-# Report the remaining entries in the tables.
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+# Report the remaining entries in the tables.
+event zeek_done()
 	{
 	for ( orig in distinct_peers )
 		scan_summary(distinct_peers, orig);

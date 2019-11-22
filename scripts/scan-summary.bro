@@ -237,7 +237,7 @@ function workers_update_scan_summary(idx: addr)
 	
 		hll_cardinality_merge_into(scan_summary[idx]$hosts, conn_table[idx]$hosts); 
 
-		local peer = get_event_peer()  ;
+		#local peer = get_event_peer()  ;
 		scan_summary[idx]$event_peer = fmt ("%s", peer_description ); 
 
 		 local zero_time = double_to_time(0.0);

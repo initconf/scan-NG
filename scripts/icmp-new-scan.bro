@@ -186,8 +186,16 @@ event icmp_sent (c: connection , icmp: icmp_conn )
 
 } 
 
-
+@ifndef(zeek_done)
+#Running on old bro that doesn't know about zeek events
+global zeek_done: event();
 event bro_done()
+{
+    event zeek_done();
+}
+@endif
+
+event zeek_done()
         {
         for ( orig in distinct_peers )
                 scan_summary(distinct_peers, orig);

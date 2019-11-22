@@ -76,8 +76,7 @@ function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): boo
 
 
 			local svrc_msg = fmt("low port trolling %s %s", orig, s);
-			NOTICE([$note=LowPortTrolling, $src=orig,
-				$src_peer=get_local_event_peer(), 
+			NOTICE([$note=LowPortTrolling, $src=orig, 
 				$p=service, $msg=svrc_msg]);
 
 			troll = T ; 

@@ -86,7 +86,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 #			{ iplist += fmt (" %s", ip); }
 #
 #			local msg = fmt("landmine address trigger %s [%s] %s", orig, d_port, iplist );
-#			NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+#			NOTICE([$note=LandMine, $src=orig, $msg=msg, $identifier=cat(orig)]);
 #			log_reporter (fmt ("NOTICE: FOUND LandMine : %s", orig),0);
 #
 #			return T; 
@@ -108,7 +108,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 	if (d_val  >= landmine_thresh_trigger)  
 	{	
 		local msg=fmt ("Landmine hit by %s", orig); 
-		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
+		NOTICE([$note=LandMine, $src=orig, $msg=msg, $identifier=cat(orig)]);
 		log_reporter (fmt ("NOTICE: FOUND LandMine : %s, %s", orig, network_time()),0);
 		return T ; 
 

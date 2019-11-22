@@ -287,8 +287,7 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 
 				local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
 
-				NOTICE([$note=PurgeOnWhitelist, $src=ip,
-					$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+				NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
 				delete known_scanners[ip] ;
 
 				@ifdef (NetControl::unblock_address_catch_release) 

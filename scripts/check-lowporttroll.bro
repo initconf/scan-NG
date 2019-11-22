@@ -64,7 +64,7 @@ function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): boo
 	     service !in distinct_low_ports[orig] )
 		{
 		if ( orig !in distinct_low_ports )
-			distinct_low_ports[orig] = set() &mergeable;
+			distinct_low_ports[orig] = set() ; ##&mergeable;
 
 		add distinct_low_ports[orig][service];
 

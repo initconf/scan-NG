@@ -26,7 +26,7 @@ export
 
 	###	Expire functions that trigger summaries.
         global c_landmine_scan_summary:
-                function(t: table[addr] of set[addr], orig: addr): interval;
+                function(t: table[addr] of opaque of cardinality, orig: addr): interval;
 
 	global c_landmine_distinct_peers: table[addr] of opaque of cardinality 
 		&default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }

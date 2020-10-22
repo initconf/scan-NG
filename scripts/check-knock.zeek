@@ -26,8 +26,8 @@ export {
 	global activate_KnockKnockScan = F &redef ; 
 	
 	redef enum Notice::Type += {
-		KnockKnockScan, # source flagged as scanner by TRW algorithm
-	       	KnockKnockSummary, # summary of scanning activities reported by TRW
+		KnockKnockScan, 
+	       	KnockKnockSummary, 
 		LikelyScanner, 
 		IgnoreLikelyScanner, 
 		KnockSummary, 
@@ -63,21 +63,21 @@ export {
 	global COMMUTE_DISTANCE = 320 &redef ; 
 
 	# automated_exceptions using input-framework
-	global ipportexclude_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" &redef ;
+	global knock_exceptions_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" &redef ;
 
-	type ipportexclude_Idx: record {
+	type knock_exceptions_Idx: record {
 		exclude_ip: addr;
 	       	exclude_port: port &type_column="t";
 	};
 	
-	type ipportexclude_Val: record {
+	type knock_exceptions_Val: record {
 		exclude_ip: addr;
 	       	exclude_port: port &type_column="t" ;
 	       	comment: string &optional ;
 	} ;
 
-	global ipportexclude: table[addr, port] of ipportexclude_Val = table() &redef  ; ### &synchronized ;
-	global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; #### &synchronized ; 
+	global knock_exceptions: table[addr, port] of knock_exceptions_Val = table() &redef  ; ### &synchronized ;
+	#global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; #### &synchronized ; 
 	
 	### clusterization helper events 
 	global m_w_knockscan_add: event (orig: addr, d_port: port,  resp: addr);
@@ -102,7 +102,6 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 	local medium_threshold_flag=F; 
 	local usual_threshold_flag=F; 
 
-	# # # # # ## # # # # #
 	# code and heuristics of to determine if orig is inface a scanner
 
 	# gather geoip distance
@@ -119,29 +118,38 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		high_threshold_flag =  T;
 	}
 
-	if (d_port !in concurrent_scanners_per_port)
-	{
-		concurrent_scanners_per_port[d_port]=set();
-	}
+	#if (d_port !in concurrent_scanners_per_port)
+	#{
+	#	concurrent_scanners_per_port[d_port]=set();
+	#}
 
 	# stop populating the table if > 6 simultenious scanners
 	# are probing on the same port. IN this case we
 	# reduce the threshold to 3 faolures to block
-	if (|concurrent_scanners_per_port[d_port]| <=5) 
-	{
-		add concurrent_scanners_per_port[d_port][orig] ;
-	}
+	#if (|concurrent_scanners_per_port[d_port]| <=5) 
+	#{
+	#	add concurrent_scanners_per_port[d_port][orig] ;
+	#}
 
+	local flux_density = check_port_flux_density(d_port, orig); 
 
 	
        # check if in knock_high_threshold_ports or rare port scan (too few concurrent scanners)
        # notch up threshold ot high  - likewise for medium thresholds
 
+	#if (! high_threshold_flag ) 
+	#{ 
+	#       if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
+	#       {       high_threshold_flag = T ; }
+	#       else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
+	#       {       medium_threshold_flag = T ;  }
+	#} 
+
 	if (! high_threshold_flag ) 
 	{ 
-	       if (d_port in knock_high_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=2)
+	       if (d_port in knock_high_threshold_ports  || flux_density <=2)
 	       {       high_threshold_flag = T ; }
-	       else if (d_port in knock_medium_threshold_ports  || |concurrent_scanners_per_port[d_port]| <=5)
+	       else if (d_port in knock_medium_threshold_ports  || flux_density <=5)
 	       {       medium_threshold_flag = T ;  }
 	} 
 
@@ -169,11 +177,12 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		# make sure there is country code
 		local cc =  orig_loc?$country_code ? orig_loc$country_code : "" ;
 
-		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
+		#local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
+		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, flux_density, cc, distance);
 
-		NOTICE([$note=KnockKnockScan, $src=orig,
-				 $src_peer=get_local_event_peer(), $msg=fmt("%s", _msg), $identifier=cat(orig), $suppress_for=1 mins]);
-		log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
+		#$ts=current_time(), 
+		NOTICE([$note=KnockKnockScan, $src=orig, $p=d_port, $msg=fmt("%s", _msg)]);
+		#log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
 	} 
 
@@ -205,7 +214,8 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 
 	# only worry about TCP connections
 	# we deal with udp and icmp scanners differently
-	       
+
+	# aashish UDP 	       
 	if (get_port_transport_proto(cid$resp_p) != tcp)
 		return F;
 
@@ -293,8 +303,8 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 	} 
 	
 	# ignore traffic to host/port  this is primarily whitelisting 
-	# maintained in ipportexclude_file for sticky config firewalled hosts 
-	if ([resp, d_port] in ipportexclude) 
+	# maintained in knock_exceptions_file for sticky config firewalled hosts 
+	if ([resp, d_port] in knock_exceptions) 
 	{	return "";  } 
 
 	# if ever a SF a LBL host on this port - ignore the orig completely 
@@ -315,10 +325,10 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 }
 
 
-event bro_init()
+event zeek_init()
 {
 
-Input::add_table([$source=ipportexclude_file, $name="ipportexclude", $idx=ipportexclude_Idx, $val=ipportexclude_Val,  $destination=ipportexclude, $mode=Input::REREAD ]);
+Input::add_table([$source=knock_exceptions_file, $name="knock_exceptions", $idx=knock_exceptions_Idx, $val=knock_exceptions_Val,  $destination=knock_exceptions, $mode=Input::REREAD ]);
 
 } 
 

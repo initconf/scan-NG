@@ -61,7 +61,7 @@ global honeypot: set[addr];
 global eta_zero: double;	# initialized when Bro starts
 global eta_one: double;
 
-event bro_init()
+event zeek_init()
 	{
 	eta_zero =
 		(1 - target_detection_prob) / (1 - target_false_positive_prob);

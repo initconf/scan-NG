@@ -9,7 +9,7 @@ export
 { 
 	global activate_LandMine = F &redef;
 
-        const landmine_thresh_trigger = 3 &redef;
+        const landmine_thresh_trigger = 5 &redef;
         const landmine_address: set[addr] &redef;
 
 	redef enum Notice::Type += {
@@ -17,20 +17,20 @@ export
 		LandMineSummary, # aggregate of landmine scanner
 	}; 
 
-	#global landmine_scan_summary:
-        #        function(t: table[addr] of set[addr], orig: addr): interval;
+	global landmine_scan_summary:
+                function(t: table[addr] of set[addr], orig: addr): interval;
 
-        #global landmine_distinct_peers: table[addr] of set[addr]
-        #        &read_expire = 5 day &expire_func=landmine_scan_summary &redef;
+        global landmine_distinct_peers: table[addr] of set[addr]
+                &read_expire = 1 day &expire_func=landmine_scan_summary &redef;
 
 
 	###	Expire functions that trigger summaries.
-        global c_landmine_scan_summary:
-                function(t: table[addr] of set[addr], orig: addr): interval;
+	global c_landmine_scan_summary: 
+		function(t: table[addr] of opaque of cardinality, orig: addr): interval;
 
-	global c_landmine_distinct_peers: table[addr] of opaque of cardinality 
-		&default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
-                &read_expire = 1 days  &expire_func=c_landmine_scan_summary ; 
+        global c_landmine_distinct_peers: table[addr] of opaque of cardinality
+                &default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
+                &read_expire = 1 days  &expire_func=c_landmine_scan_summary ;
 
 	global landmine_ignore_ports: set [port] = { 53/tcp, 53/udp} &redef ;
 
@@ -47,12 +47,12 @@ export
 
 function landmine_scan_summary(t: table[addr] of set[addr], orig: addr): interval
 {
+	log_reporter(fmt("landmine_scan_summary: %s", t[orig]),0); 
         return 0 secs;
 }
 
 function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool 
 {
-
 	 if (gather_statistics)
                 s_counters$c_land_checkscan += 1  ;
 
@@ -69,50 +69,44 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 		return F ; 
 	} 
 	
-#	if ([orig] !in landmine_distinct_peers)
-#		landmine_distinct_peers[orig]=set() &mergeable;
-#			
-#	if([resp] !in landmine_distinct_peers[orig])
-#	{
-#		add landmine_distinct_peers[orig][resp]; 
-#		#result = check_landmine_scan(orig, d_port, resp) ; 
-#
-#
-#		if ( |landmine_distinct_peers[orig]| >= landmine_thresh_trigger )
-#		{ 
-#			local iplist = "" ; 
-#
-#			for (ip in landmine_distinct_peers[orig]) 
-#			{ iplist += fmt (" %s", ip); }
-#
-#			local msg = fmt("landmine address trigger %s [%s] %s", orig, d_port, iplist );
-#			NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
-#			log_reporter (fmt ("NOTICE: FOUND LandMine : %s", orig),0);
-#
-#			return T; 
-#		} 
-#	} 
-
-	if ([orig] !in c_landmine_distinct_peers)
+	if ([orig] !in landmine_distinct_peers)
+		landmine_distinct_peers[orig]=set() ;
+			
+	if([resp] !in landmine_distinct_peers[orig])
 	{
-		local cp: opaque of cardinality = hll_cardinality_init(0.1, 0.99); 
-                c_landmine_distinct_peers[orig]=cp ; 
+		add landmine_distinct_peers[orig][resp]; 
+
+		if ( |landmine_distinct_peers[orig]| >= landmine_thresh_trigger )
+		{ 
+			local iplist = "" ; 
+
+			for (ip in landmine_distinct_peers[orig]) 
+			{ iplist += fmt (" %s", ip); }
+
+			local msg = fmt("landmine address trigger %s [%s] %s", orig, d_port, iplist );
+			NOTICE([$note=LandMine, $src=orig, $p=d_port, $id=cid, $msg=msg]);
+			return T; 
+		} 
 	} 
 
-	hll_cardinality_add(c_landmine_distinct_peers[orig], resp);	
-
-	#### local result = check_landmine_scan(orig, d_port, resp) ;
-
-	local d_val = double_to_count(hll_cardinality_estimate(c_landmine_distinct_peers[orig])) ;
-	
-	if (d_val  >= landmine_thresh_trigger)  
-	{	
-		local msg=fmt ("Landmine hit by %s", orig); 
-		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg, $identifier=cat(orig)]);
-		log_reporter (fmt ("NOTICE: FOUND LandMine : %s, %s", orig, network_time()),0);
-		return T ; 
-
-	}
+#	if ([orig] !in c_landmine_distinct_peers)
+#	{
+#		local cp: opaque of cardinality = hll_cardinality_init(0.1, 0.99); 
+#                c_landmine_distinct_peers[orig]=cp ; 
+#	} 
+#	hll_cardinality_add(c_landmine_distinct_peers[orig], resp);	
+#
+#	#### local result = check_landmine_scan(orig, d_port, resp) ;
+#
+#	local d_val = double_to_count(hll_cardinality_estimate(c_landmine_distinct_peers[orig])) ;
+#	
+#	if (d_val  >= landmine_thresh_trigger)  
+#	{	
+#		local msg=fmt ("Landmine hit by %s", orig); 
+#		NOTICE([$note=LandMine, $src=orig, $src_peer=get_local_event_peer(), $msg=msg]);
+#		log_reporter (fmt ("NOTICE: FOUND LandMine : %s, %s", orig, network_time()),0);
+#		return T ; 
+#	}
 
 
 	return F ; 
@@ -160,8 +154,9 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 
 	# limitation - works good only for tcp|icmp with minimal false positive 
 	# for udp see  - udp-scan.bro 
-	if (get_port_transport_proto(c$id$resp_p) != tcp )
-		return "";
+	# enabling udp LandMine - 2019-09-16 aashish
+	#if (get_port_transport_proto(c$id$resp_p) != tcp )
+	#	return "";
 
 	if (resp_p in Scan::landmine_ignore_ports) 
 		return "" ; 

@@ -15,6 +15,16 @@ redef TRW::use_TRW_algorithm = F ;
 #redef Scan::activate_PortScan = F ;
 
 
+# set home_base to your local_nets IP
+# this is used in to calculate geoip 
+# haversine_distance_ip in ss.zeek 
+
+export {
+
+	global home_base = 0.0.0.0 &redef ;  
+} 
+
+
 ########## Important to configure for Landmine detection 
 ####  if subnet_feed is empty then LandMine detection wont work 
 

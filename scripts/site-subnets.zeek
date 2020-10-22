@@ -19,8 +19,8 @@ export {
 		Use: string &optional ;
 	};
 
-	global subnet_table: table[subnet] of subnet_Val = table() &redef ; 
 
+	global subnet_table: table[subnet] of subnet_Val = table() &redef ; 
 	global subnet_feed="/YURT/feeds/BRO-feeds/LBL-subnets.csv-LATEST_BRO" &redef ; 
 
 } 
@@ -31,18 +31,19 @@ export {
 ### we catch the error in subnet feed is empty and populate subnet_table with local_nets 
 ### so that LandMine detection doesn't block accidently 
 
-event reporter_error(t: time , msg: string , location: string )
+event reporter_warning(t: time , msg: string , location: string )
 {
-
-        if (/LBL-subnets.csv-LATEST_BRO.2\/Input::READER_ASCII: Init failed/ in msg)
-        if (subnet_feed in msg)
-	{ 
+        if (/LBL-subnets.csv-LATEST_BRO\/Input::READER_ASCII/ in msg)
+        {
+        	if (subnet_feed in msg)
+		{ 
 		for (nets in Site::local_nets)
                	{
-			print fmt("nets: %s", nets); 
+			#print fmt("nets: %s", nets); 
 			local sv: subnet_Val = [$Network=nets, $Gateway=1.1.1.1, $Enclaves="Site", $Use="Filling the empty subnet table"]; 
               		Site::subnet_table[nets] = sv ; 
 		}
+		} 
 	} 
 	
 }
@@ -51,8 +52,12 @@ event reporter_error(t: time , msg: string , location: string )
 
 event Input::end_of_data(name: string, source: string)                                                         
 {                                                                         
-	print fmt ("name is %s source is %s", name, source); 
-        print fmt("digested  %s records in %s",|source|, source);
+
+	if ( /subnet_table/ in name  )
+	{ 
+		print fmt ("name is %s source is %s", name, source); 
+		print fmt("digested  %s records in %s",|source|, source);
+	} 
 		
 	# since subnet table is zero size
        	# we poulate with local_nets
@@ -66,7 +71,7 @@ event Input::end_of_data(name: string, source: string)
 	} 
 } 
 
-event bro_init() &priority=10
+event zeek_init() &priority=10
 {
         Input::add_table([$source=subnet_feed, $name="subnet_table", $idx=subnet_Idx, $val=subnet_Val,  $destination=subnet_table, $mode=Input::REREAD]);  
         
@@ -76,10 +81,10 @@ event bro_init() &priority=10
 }
 
 
-event bro_done()
+event zeek_done()
 {
 	#print fmt("bro-done subnet-bro"); 
-	#print fmt("digested  %s records in subnet_table", |Site::subnet_table|);
+	print fmt("digested  %s records in subnet_table", |Site::subnet_table|);
 	#print fmt("subnet_table %s", Site::subnet_table);
 
 } 

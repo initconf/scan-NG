@@ -35,8 +35,7 @@ function check_conn_history(ip: addr): bool
 	if (seen == 1)
 	{
        		NOTICE([$note=History::SF_to_Scanner, $src=ip,
-       			$msg=fmt("outgoing SF to scanner %s", ip),
-                       	$identifier=cat(ip), $suppress_for=1 hrs]);
+       			$msg=fmt("outgoing SF to scanner %s", ip)]);
 		
 		result = T ; 
 	}
@@ -47,8 +46,7 @@ function check_conn_history(ip: addr): bool
 	if (duration_seen == 1)
 	{
 		NOTICE([$note=History::LongDuration, $src=ip,
-		$msg=fmt("known long duration connections from this scanner IP: %s", ip),
-		$identifier=cat(ip), $suppress_for=1 hrs]);
+		$msg=fmt("known long duration connections from this scanner IP: %s", ip)]);
 		
 		result = T ; 
 	}
@@ -56,14 +54,14 @@ function check_conn_history(ip: addr): bool
 	return result ; 
 } 
 
-event bro_init()
+event zeek_init()
 {
 	# on avg we see 6.2M ip address a day 2016-04-01
-	# so setting bloom to 40M 
+	# so setting bloom to 10M 
 	# not yet measured what is overlap of 6.2M the next day
 	
-	tcp_outgoing_SF = bloomfilter_basic_init(0.0000001, 40000000);
-	tcp_conn_duration_bloom= bloomfilter_basic_init(0.0000001, 40000000);
+	tcp_outgoing_SF = bloomfilter_basic_init(0.00001, 40000000);
+	tcp_conn_duration_bloom= bloomfilter_basic_init(0.00001, 40000000);
 	#tcp_outgoing_SF = bloomfilter_basic_init(0.0001, 400);
 	#tcp_conn_duration_bloom= bloomfilter_basic_init(0.0001, 400);
 	initialized_bloom = T ; 
@@ -71,10 +69,26 @@ event bro_init()
 
 
 
+#@if ( Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /History::m_w_add/;
+#redef Cluster::worker2manager_events += /History::w_m_new/;
+#@endif
+
 @if ( Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /History::m_w_add/;
-redef Cluster::worker2manager_events += /History::w_m_new/;
+
+@if ( Cluster::local_node_type() == Cluster::MANAGER )
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::worker_topic, History::m_w_add) ; 
+        }
+@else
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::manager_topic, History::w_m_new) ; 
+        }
+@endif
+
 @endif
 
 
@@ -88,7 +102,7 @@ function add_to_bloom(ip: addr)
 
 @if ( Cluster::is_enabled() )
 	        event History::w_m_new(ip);
-        	#log_reporter(fmt ("add_to_bloom %s", ip), 0);
+        	#Scan::log_reporter(fmt ("add_to_bloom %s", ip), 0);
 @endif
 	} 
 	
@@ -98,11 +112,18 @@ function add_to_bloom(ip: addr)
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event History::w_m_new(ip: addr)
 {
-	#log_reporter(fmt ("History: w_m_new: %s", ip), 0);
+	#Scan::log_reporter(fmt ("History: w_m_new: %s", ip), 0);
 	bloomfilter_add(tcp_outgoing_SF, ip);
 }
 @endif
 
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+event History::m_w_add(ip: addr)
+{
+	Scan::log_reporter(fmt ("History: m_w_add: %s", ip), 0);
+	bloomfilter_add(tcp_outgoing_SF, ip);
+}
+@endif
 
 # so that we have all the flags etc
 

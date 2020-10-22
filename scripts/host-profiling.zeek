@@ -23,7 +23,7 @@ export {
 } 
 
 
-event bro_init() &priority=5
+event zeek_init() &priority=5
 {
         Log::create_stream(Site::host_open_ports_LOG, [$columns=Info]);
 
@@ -51,10 +51,26 @@ function log_host_profiles(cid: conn_id)
 }
 
 
+#@if ( Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /Site::m_w_add_host_profiles/;
+#redef Cluster::worker2manager_events += /Site::w_m_new_host_profile/;
+#@endif
+
 @if ( Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Site::m_w_add_host_profiles/;
-redef Cluster::worker2manager_events += /Site::w_m_new_host_profile/;
+
+@if ( Cluster::local_node_type() == Cluster::MANAGER )
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::worker_topic, Site::m_w_add_host_profiles); 
+        }
+@else
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::manager_topic, Site::w_m_new_host_profile); 
+        }
+@endif
+
 @endif
 
 
@@ -96,7 +112,7 @@ event Site::w_m_new_host_profile(cid: conn_id)
         local resp = cid$resp_h ;
         local d_port = cid$resp_p;
 
-	##Scan::log_reporter(fmt ("w_m_new_host_profile: %s", cid));
+	#Scan::log_reporter(fmt ("w_m_new_host_profile: %s", cid));
 
 	if (resp !in host_profiles)
 		host_profiles[resp]=set();

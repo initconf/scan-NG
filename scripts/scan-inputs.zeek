@@ -66,10 +66,31 @@ export {
 }
 
 
+#@if ( Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|update|remove)_(ip|subnet)/;
+#@endif
+
 @if ( Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|update|remove)_(ip|subnet)/;
+
+@if ( Cluster::local_node_type() == Cluster::MANAGER )
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_add_subnet) ; 
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_update_subnet) ; 
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_remove_subnet) ; 
+        }
+@else
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::manager_topic, Scan::m_w_add_ip) ; 
+        Broker::auto_publish(Cluster::manager_topic, Scan::m_w_update_ip) ; 
+        Broker::auto_publish(Cluster::manager_topic, Scan::m_w_remove_ip) ; 
+        }
 @endif
+
+@endif
+
 
 event reporter_error(t: time , msg: string , location: string )
 {
@@ -100,6 +121,19 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
 
 		_msg = fmt("%s: %s", ip, comment);
                 NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
+	
+		if (PURGE_ON_WHITELIST && is_catch_release_active(ip))
+		{
+                        _msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]);
+                        delete known_scanners[ip] ;
+
+                        @ifdef (NetControl::unblock_address_catch_release)
+                                if (NetControl::unblock_address_catch_release(ip, _msg))
+                                {
+                                        NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
+                                }
+                        @endif
+		}
 
 	@if ( Cluster::is_enabled() )
 	        	event Scan::m_w_add_ip(ip, comment) ; 
@@ -205,10 +239,9 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_add_ip(ip: addr, comment: string)
         {
-
 		local _msg="" ; 
+        	#log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
 
-        	log_reporter(fmt ("scan-inputs.bro: m_w_add_ip: %s, %s", ip, comment), 0);
 		if ( ip !in whitelist_ip_table) 
 		{
 			local wl: wl_ip_Val; 
@@ -221,22 +254,21 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 		# disable for the time-being to keep consistency with changed, removed 
 		# and webspiders are being logged already 
 
-		_msg = fmt("%s: %s", ip, comment); 
+		_msg = fmt("removing from known_scanners table due to whitelist: %s: %s", ip, comment); 
 
 		#NOTICE([$note=WhitelistAdd, $src=ip, $msg=fmt("%s", _msg)]);
 		
-		if (PURGE_ON_WHITELIST)
+		#if (PURGE_ON_WHITELIST && ip in known_scanners)
+		if (PURGE_ON_WHITELIST && is_catch_release_active(ip))
 		{ 
-			NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
-			if (ip in known_scanners)
-			{
-				delete known_scanners[ip] ; 
-			}
-
 			_msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
+			delete known_scanners[ip] ; 
 
 			@ifdef (NetControl::unblock_address_catch_release) 
-				NetControl::unblock_address_catch_release(ip, _msg);
+				if (NetControl::unblock_address_catch_release(ip, _msg))
+				{ 
+					NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
+				} 
 			@endif 
 		}	 
 	}
@@ -275,8 +307,7 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 
 				local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
 
-				NOTICE([$note=PurgeOnWhitelist, $src=ip,
-					$src_peer=get_local_event_peer(), $msg=fmt("%s", _msg)]);
+				NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
 				delete known_scanners[ip] ;
 
 				@ifdef (NetControl::unblock_address_catch_release) 
@@ -304,7 +335,7 @@ delete whitelist_subnet_table[nets];
 
 event update_whitelist()
 {
-##log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
+#log_reporter(fmt ("%s running update_whitelist", network_time()), 0);
 #print fmt("%s", whitelist_ip_table); 
 
 Input::force_update("whitelist_ip");
@@ -330,13 +361,13 @@ if ( ! Cluster::is_enabled() || Cluster::local_node_type() == Cluster::MANAGER )
 }
 
 
-event bro_init() &priority=5
+event zeek_init() &priority=5
 {
 schedule read_whitelist_timer  { read_whitelist() }; 
 }
 
 
-event bro_done()
+event zeek_done()
 {
 	#for ( ip in whitelist_ip_table)
 	#{

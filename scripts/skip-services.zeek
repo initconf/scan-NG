@@ -1,4 +1,4 @@
-redef exit_only_after_terminate=T ;
+#redef exit_only_after_terminate=T ;
 
 module Scan;
 
@@ -9,7 +9,8 @@ export {
 		RemoveSkipPort, 
 	}; 
 
-	global portexclude_file = "/YURT/feeds/BRO-feeds/scan-portexclude" &redef ;
+	global portexclude_file = "" &redef ;
+	redef portexclude_file = "/YURT/feeds/BRO-feeds/scan-portexclude" ; 
 
         type Idx: record {
                 skip_port : port &type_column="t";
@@ -17,9 +18,9 @@ export {
 
         type portexclude_Val: record {
                 skip_port : port &type_column="t";
+		comment: string &optional ; 
         } ;
 
-	global skip_services: set[port] = {111/tcp, } ; 
 	global port_exclude_table: table[port] of portexclude_Val=table(); 
 } 
 
@@ -27,7 +28,6 @@ event port_exclude(description: Input::TableDescription, tpe: Input::Event, left
 {
 	local _msg = "" ; 
 
-	print fmt ("%s", left$skip_port); 
 	if ( tpe == Input::EVENT_NEW )
         {
 		_msg = fmt ("Port %s added to skip_services", left$skip_port); 
@@ -43,13 +43,12 @@ event port_exclude(description: Input::TableDescription, tpe: Input::Event, left
 	} 
 }
 
-event bro_init() {
+event zeek_init() {
 	Input::add_table([$source=portexclude_file, $mode=Input::REREAD, $name="port_exclude", $destination=port_exclude_table, $idx=Idx, $val=portexclude_Val, $ev=port_exclude]);
 }
 
-event bro_done()
+event zeek_done()
 {
-
-	for (p in skip_services) 
-	print fmt ("%s", p); 
+	#for (p in skip_services) 
+	#print fmt ("%s", p); 
  } 

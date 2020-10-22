@@ -1,9 +1,11 @@
 # scan-NG
 
+now works with zeek-3.x.x 
 
-to load in your local.bro (or site.bro ) policy
 
-@load scan-NG 
+to load in your local.zeek (or site.zeek) policy
 
-To tune scan-detection you can adjust/define variables in scan-config.bro policy 
+@load scan-NG/scripts 
+
+To tune scan-detection you can adjust/define variables in:  scan-config.zeek 
 

@@ -145,7 +145,7 @@ function check_lowporttrolling(orig: addr, service: port, resp: addr): bool
 	     service !in distinct_low_ports[orig] )
 		{
 		if ( orig !in distinct_low_ports )
-			distinct_low_ports[orig] = set() &mergeable;
+			distinct_low_ports[orig] = set() ;
 
 		add distinct_low_ports[orig][service];
 
@@ -178,10 +178,10 @@ function check_portscan_thresh(orig: addr, service:port, resp: addr): bool
 {
 
 	if ( orig !in scan_triples )
-		scan_triples[orig] = table() &mergeable;
+		scan_triples[orig] = table() ;
 
 	if ( resp !in scan_triples[orig] )
-		scan_triples[orig][resp] = set() &mergeable;
+		scan_triples[orig][resp] = set() ;
 
 	if ( service !in scan_triples[orig][resp] )
 	{
@@ -244,7 +244,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 	if ( orig !in distinct_ports || service !in distinct_ports[orig] )
 		{
 		if ( orig !in distinct_ports )
-			distinct_ports[orig] = set() &mergeable;
+			distinct_ports[orig] = set() ;
 
 		if ( service !in distinct_ports[orig] )
 			add distinct_ports[orig][service];
@@ -252,7 +252,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 		if ( |distinct_ports[orig]| >= possible_port_scan_thresh &&
 			orig !in scan_triples )
 			{
-			scan_triples[orig] = table() &mergeable;
+			scan_triples[orig] = table() ;
 			add possible_scan_sources[orig];
 			}
 		}
@@ -301,7 +301,7 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
 	  if ( orig !in distinct_ports || service !in distinct_ports[orig] )
                 {
                 if ( orig !in distinct_ports )
-                        distinct_ports[orig] = set() &mergeable;
+                        distinct_ports[orig] = set() ;
 
                 if ( service !in distinct_ports[orig] )
                         add distinct_ports[orig][service];
@@ -309,7 +309,7 @@ event Scan::w_m_portscan_new(orig: addr, service: port, resp: addr, outbound: bo
                 if ( |distinct_ports[orig]| >= possible_port_scan_thresh &&
                         orig !in scan_triples )
                         {
-                        scan_triples[orig] = table() &mergeable;
+                        scan_triples[orig] = table() ;
                         add possible_scan_sources[orig];
                         }
                 }

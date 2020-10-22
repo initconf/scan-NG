@@ -36,10 +36,10 @@ event NetControl::rule_added(r: Rule, p: PluginState, msg: string &default="") &
 
 	if (/Re-drop/ in r$location)
         {
+                Scan::log_reporter(fmt ("netcontrol: event rule_added: %s, %s", ip, r),1);
                 Scan::known_scanners[ip]$status = T ;
                 ### send the status to all workers ;
                 event Scan::m_w_update_scanner(ip, T );
-                Scan::log_reporter(fmt ("netcontro: event m_w_update_scanner: T %s", ip),1);
         }
 
         }

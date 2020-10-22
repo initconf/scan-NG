@@ -7,48 +7,19 @@ export {
 	
 global check_scan: function (c: connection, established: bool, reverse: bool); 
 
+
+
 #global not_scanner: function (cid: conn_id): bool ; 
 
 } 
 
 global uid_table: table[string] of bool &default=F &create_expire=5 mins ;
 
-event bro_init()
+event zeek_init()
 { 
 	event table_sizes() ; 
 }	
 
-## Checks if a perticular connection is already blocked and managed by netcontrol
-## and catch-and-release. If yes, we don't process this connection any-further in the
-## scan-detection module
-## 
-## cid: conn_id - four touple conn record
-## 
-## Returns: bool - returns T or F depending if IP is managed by :bro:see:`NetControl::get_catch_release_info`  
-function is_catch_release_active(cid: conn_id): bool
-{
-	if (gather_statistics)	
-		s_counters$is_catch_release_active += 1; 
-	
-
-@ifdef (NetControl::BlockInfo)
-	local orig = cid$orig_h ; 
-
-        local bi: NetControl::BlockInfo ;
-        bi = NetControl::get_catch_release_info(orig);
-
-	#log_reporter(fmt("is_catch_release_active: blockinfo is %s, %s", cid, bi),0); 
-        ### if record bi is initialized
-        if (bi$watch_until != 0.0 ) 
-                return  T;
-
-        ### means empty bi
-        ### [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
-
-@endif 
-
-        return F ;
-}
 
 ## Checks if an IP qualies the criteria of being a NOT scanner 
 ## 
@@ -57,19 +28,35 @@ function is_catch_release_active(cid: conn_id): bool
 ## Returns: bool - T/F depending on various conditions satisfied internally 
 function not_scanner(cid: conn_id): bool 
 {
-
-@ifdef (NetControl::BlockInfo)
-	if (is_catch_release_active(cid) )
-		return T ; 
-@endif 
-
-	local result = F ; 
-
 	local orig = cid$orig_h ; 
 	local orig_p = cid$orig_p ; 
 	local resp = cid$resp_h ; 
 	local service = cid$resp_p ; 
 	local outbound = Site::is_local_addr(orig);
+
+#@ifdef (NetControl::BlockInfo)
+#	if (is_catch_release_active(cid) )
+#	{ 
+#		if (orig in known_scanners && cid$resp_p in Scan::skip_services)
+#		{ 
+#			local code: bool = F ; 
+#			code = NetControl::unblock_address_catch_release(cid$orig_h, "tcpsynportblock: Removing IP from catch-n-release"); 
+#			NOTICE([$note=DisableCatchRelease, $src=orig, $p=service, $id=cid, $src_peer=get_local_event_peer(), $msg=fmt ("Disable catch-n-release because %s added to skip_services", resp)]);
+#			#log_reporter(fmt("unblock_address_catch_release: %s, %s", cid$orig_h, code), 10); 
+#		} 
+#
+#		return T ; 
+#	} 
+#@endif 
+
+	local result = F ; 
+	
+	# blocked_nets - we don't want to put this here
+	# since this means we ignore and not see 
+	# scanners from blocked nets anymore 
+	# moving this to post scan-detection ie populate_known_scanners
+	#if (orig in blocked_nets) 
+	#	return T ;
 
         # whitelist membership checks
         if (orig in Scan::whitelist_ip_table)
@@ -77,40 +64,43 @@ function not_scanner(cid: conn_id): bool
 
         if (orig in Scan::whitelist_subnet_table)
                 return T ;
-
-	# ignore scan sources (ex: cloud.lbl.gov)
+	
+	# ignore scan sources 
 	if (orig in skip_scan_sources)
 	{       return  T ; }
 
-	# Blocked on border router - perma firewalled
-	if (orig_p in skip_services )
-	{ 	return T ; } 
+	if (orig_p == 7547/tcp  )
+	{ 	return T; } 
+	
+	#if (orig_p in skip_services && orig_p == 7547/tcp  )
+	#{ 	return T ; } 
 
-
-	if ( service in skip_services &&  ! outbound )
-		return T;
-
+	#if ( service in skip_services &&  ! outbound )
+	#	return T;
+	
 	if ( outbound && service in skip_outbound_services )
 		return T;
-
+	
 	if ( orig in skip_scan_nets )
 		return T;
-
+	
 	# Don't include well known server/ports for scanning purposes.
 	if ( ! outbound && [resp, service] in skip_dest_server_ports )
 		return T;
-
+	
 	# check for conn_history - that is if we ever saw a full SF going to this IP
-#	if (History::check_conn_history(orig))
-#		return T ; 
+	#f (History::check_conn_history(orig))
+	#	return T ; 
 
+	# enabling udp for Landmine - aashish 2019-09-16 
 	# we only deal with tcp scanners and icmp for now
-	if (service >= 0/udp && service <= 65535/udp) 
-		return T; 
+	# Enabling UDP on LandMine -2019-09-16 aashish 
+	#if (service >= 0/udp && service <= 65535/udp) 
+	#	return T; 
 
 	# ignore traffic to host/port  this is primarily whitelisting
-        # maintained in ipportexclude_file for sticky config firewalled hosts
-        if (resp in Site::local_nets && [resp, service] in ipportexclude)
+        # maintained in knock_exceptions_file for sticky config firewalled hosts
+        if (resp in Site::local_nets && [resp, service] in knock_exceptions)
         {       return T;  }
 
 
@@ -137,9 +127,10 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	{ 
 		if (gather_statistics)
                         s_counters$already_scanner_counter += 1;
-
 		return ; 
 	} 
+
+
 
 	if (not_scanner(c$id))
 	{ 
@@ -148,7 +139,8 @@ function check_scan(c: connection, established: bool, reverse: bool)
 		return ; 
 	} 
 
-	#log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),0);
+	#log_reporter(fmt ("check_scan: scanner: orig in known_scanners for %s", c$id$orig_h),10);
+
 
        	local resp = c$id$resp_h ;
 
@@ -201,9 +193,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 
 	# only check landmine if darknet ip 
 	if (activate_LandMine && ! uid_table[c$uid] && darknet )
-	{ 
 			filter__LandMine = Scan::filterate_LandMineScan(c, darknet ); 
-	} 
 	if (activate_BackscatterSeen && ! uid_table[c$uid])
 		filter__Backscatter = Scan::filterate_BackscatterSeen(c, darknet);
 
@@ -238,6 +228,7 @@ function check_scan(c: connection, established: bool, reverse: bool)
 			local filterator = fmt("%s%s%s%s%s%s", filter__KnockKnock, filter__LandMine, filter__Backscatter, filter__AddressScan, filter__PortScan,filter__LowPortTroll); 
 			uid_table[c$uid]=T ; 
 			check_scan_cache(c, established, reverse, filterator) ; 
+			add scan_candidates[c$id$orig_h] ; 
 		} 
 	} 
 } 
@@ -246,10 +237,19 @@ function check_scan(c: connection, established: bool, reverse: bool)
 ### speed up landmine and knockknock for darknet space 
 event new_connection(c: connection)
 {
-
 	#print fmt ("new_connection"); 
 	### for new connections we just want to supply C and only for darknet spaces 
 	### to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
+
+	# only external IPs 
+	if (c$id$orig_h in Site::local_nets)
+		return ; 
+
+	# don't process known_scanners 
+	if (c$id$orig_h in Scan::known_scanners)
+		return ; 
+
+	#print fmt ("c$id$orig_h: %s, known_scanners: %s, counters: %s ", c$id$orig_h, known_scanners, s_counters); 
 
 	if (gather_statistics)
 	{ 
@@ -267,13 +267,41 @@ event new_connection(c: connection)
 
 event connection_state_remove(c: connection)
 {
-	#print fmt ("connection_state_remove"); 
-	check_scan(c, F, F); 
+
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
+
+	local id = c$id ;
+        local service =  id$resp_p ;
+
+	local trans = get_port_transport_proto(service);
+
+        # don't operate on a connection which responder
+        # sends data back in a udp connection ie c$history = d
+
+        if (  ((trans == udp) && (/d/ !in c$history)) || trans == tcp || trans == icmp ) 
+        {
+		check_scan(c, F, F); 
+	} 
 }
 
 
 event connection_established(c: connection)
        {
+
+
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
 
 	#print fmt("connection_established"); 
 
@@ -289,6 +317,14 @@ event partial_connection(c: connection)
        {
 	#print fmt("partial_connection"); 
 
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
+
        Scan::check_scan(c, T, F);
        }
 
@@ -296,8 +332,16 @@ event connection_attempt(c: connection)
        {
 	#print fmt("connection_attempt"); 
 
-    local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
-       Scan::check_scan(c, F, is_reverse_scan);
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
+
+	local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
+       	Scan::check_scan(c, F, is_reverse_scan);
 
        local trans = get_port_transport_proto(c$id$orig_p);
        if ( trans == tcp && TRW::use_TRW_algorithm )
@@ -308,6 +352,13 @@ event connection_half_finished(c: connection)
        {
 
 	#print fmt ("conn_half_finished"); 
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
 
        # Half connections never were "established", so do scan-checking here.
        Scan::check_scan(c, F, F);
@@ -317,6 +368,14 @@ event connection_rejected(c: connection)
        {
 
 	#print fmt("conn_rejected"); 
+
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
 
        local is_reverse_scan = (c$orig$state == TCP_RESET && c$id$resp_p !in likely_server_ports);
 
@@ -332,6 +391,14 @@ event connection_reset(c: connection)
 
 	#print fmt("conn_reset"); 
 
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
+
        if ( c$orig$state == TCP_INACTIVE || c$resp$state == TCP_INACTIVE )
         {
         local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
@@ -344,6 +411,14 @@ event connection_pending(c: connection)
        {
 	
 	#print fmt ("conn_pending") ; 
+
+	# only external IPs
+        if (c$id$orig_h in Site::local_nets)
+                return ;
+
+        # don't process known_scanners
+        if (c$id$orig_h in Scan::known_scanners)
+                return ;
 
        if ( c$orig$state == TCP_PARTIAL && c$resp$state == TCP_INACTIVE )
                Scan::check_scan(c, F, F);

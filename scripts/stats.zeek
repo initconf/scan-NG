@@ -55,17 +55,53 @@ export {
 
 }  
 
+
+function reset_counters()
+{
+	   	s_counters$new_conn_counter  = 0 ;
+                s_counters$is_catch_release_active  = 0 ;
+                s_counters$known_scanners_counter  = 0 ;
+                s_counters$not_scanner  = 0 ;
+                s_counters$darknet_counter        = 0 ;
+                s_counters$not_darknet_counter    = 0 ;
+                s_counters$already_scanner_counter   = 0 ;
+                s_counters$filteration_entry   = 0 ;
+                s_counters$filteration_success  = 0 ;
+
+                s_counters$c_knock_filterate  = 0 ;
+                s_counters$c_land_filterate  = 0 ;
+                s_counters$c_backscat_filterate  = 0 ;
+                s_counters$c_addressscan_filterate  = 0 ;
+
+                s_counters$check_scan_counter  = 0 ;
+                s_counters$check_scan_cache  = 0 ;
+
+
+                ### since these are manager counters we don't zero these
+                ### s_counters$worker_to_manager_counter  = 0 ;
+                ### s_counters$run_scan_detection  = 0 ;
+                ### s_counters$c_knock_checkscan  = 0 ;
+                ### s_counters$c_knock_core  = 0 ;
+                ### s_counters$c_land_checkscan  = 0 ;
+                ### s_counters$c_land_core  = 0 ;
+                ### s_counters$c_backscat_checkscan  = 0 ;
+                ### s_counters$c_backscat_core  = 0 ;
+                ### s_counters$c_addressscan_checkscan  = 0 ;
+                ### s_counters$c_addressscan_core  = 0 ;
+
+} 
+
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event dump_stats()
 {
-	#log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
+	log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
 	event Scan::m_w_send_performance_counters(T); 
 
 	schedule stat_freq { dump_stats() }; 	
 } 
 
 
-event bro_init()
+event zeek_init()
 {
 	if (gather_statistics)
 		schedule stat_freq { dump_stats() }; 	
@@ -76,11 +112,29 @@ event bro_init()
 @endif 
 
 
-@if (  Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_send_performance_counters/ ;
-redef Cluster::worker2manager_events += /Scan::w_m_update_performance_counters/ ;
+#@if (  Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /Scan::m_w_send_performance_counters/ ;
+#redef Cluster::worker2manager_events += /Scan::w_m_update_performance_counters/ ;
+#@endif
+
+
+@if ( Cluster::is_enabled() )
+
+@if ( Cluster::local_node_type() == Cluster::MANAGER )
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_send_performance_counters) ; 
+        }
+@else
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::manager_topic, Scan::w_m_update_performance_counters); 
+        }
 @endif
+
+@endif
+
 
 
 @if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (! Cluster::is_enabled()) )
@@ -90,6 +144,7 @@ event Scan::m_w_send_performance_counters(send: bool)
 	worker_count = 0 ; 
 	#log_reporter(fmt ("m_w_send_performance_counters calling w_m_update_performance_counters" ),0); 
 	event Scan::w_m_update_performance_counters(s_counters); 
+	reset_counters() ; 
 }
 
 @endif 
@@ -99,8 +154,8 @@ event Scan::m_w_send_performance_counters(send: bool)
 event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
 
-#	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
-	log_reporter(fmt("Got counters: %s", sc),0); 
+	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
+#	log_reporter(fmt("Got counters: %s", sc),2); 
 
 	
 
@@ -132,7 +187,7 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 		s_counters$check_scan_cache += sc$check_scan_cache ; 
 
 
-			local c_worker = sc$event_peer ; 
+			local c_worker = sc?$event_peer ? sc$event_peer : "" ; 
 
 			if (c_worker !in aggregate_workers) 
 				aggregate_workers[c_worker]= T ; 
@@ -146,25 +201,6 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 		for (w in aggregate_workers) 
 			delete aggregate_workers[w] ; 
 		
-		s_counters$new_conn_counter  = 0 ; 
-                s_counters$is_catch_release_active  = 0 ; 
-                s_counters$known_scanners_counter  = 0 ; 
-                s_counters$not_scanner  = 0 ; 
-                s_counters$darknet_counter        = 0 ; 
-                s_counters$not_darknet_counter    = 0 ; 
-                s_counters$already_scanner_counter   = 0 ; 
-                s_counters$filteration_entry   = 0 ; 
-                s_counters$filteration_success  = 0 ; 
-
-                s_counters$c_knock_filterate  = 0 ; 
-                s_counters$c_land_filterate  = 0 ; 
-                s_counters$c_backscat_filterate  = 0 ; 
-                s_counters$c_addressscan_filterate  = 0 ; 
-
-                s_counters$check_scan_counter  = 0 ; 
-                s_counters$check_scan_cache  = 0 ; 
-
-
 		### since these are manager counters we don't zero these 
 		### s_counters$worker_to_manager_counter  = 0 ; 
 		### s_counters$run_scan_detection  = 0 ; 

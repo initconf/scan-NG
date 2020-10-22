@@ -13,7 +13,7 @@ export {
 	 redef enum Notice::Type += {
                 PasswordGuessing, 	# source tried many user/password combinations
                 SuccessfulPasswordGuessing,     # same, but a login succeeded
-		HotSubnet, 	# Too many scanners originating from this subnet 
+		DisableCatchRelease, 
         };
 
         type scan_info : record {
@@ -31,20 +31,23 @@ export {
 	# Reason: (i) we don't know separate timers for workers and managers for a scanner 
 	# (ii) unexpected absence of known_scanners can cause values to be wrong in scan_summary
 
+	global finish_scan_summary: event(ip: addr); 
+
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 
         global known_scanners_inactive: function(t: table[addr] of scan_info , idx: addr): interval;
 
-        const known_scanners_create_expire: interval = 1 days ; # 20 mins ; 
+        const known_scanners_create_expire: interval = 1 day ; # 20 mins ; 
 
-        global known_scanners: table[addr] of scan_info &create_expire=known_scanners_create_expire
+        global known_scanners: table[addr] of scan_info &read_expire=known_scanners_create_expire
                                 &expire_func=known_scanners_inactive ; 
 @endif 
 
 	### workers will keep known_scanners until manager sends m_w_remove_scanner event 
 	### when manager calls known_scanners_inactive event 
 
-@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
+@if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER)
+
         global known_scanners: table[addr] of scan_info ; 
 @endif 
 
@@ -97,19 +100,12 @@ export {
 	global ignore_addr: function(a: addr); 
 	global clear_addr: function (a: addr); 
 
-	global hot_subnets: table[subnet] of set[addr] &create_expire=7 days; 
-	global hot_subnets_idx: table[subnet] of count &create_expire=7 days; 
-	global hot_subnets_threshold: vector of count = { 3, 10, 25, 100, 200, 255 } ; 
-	
-
-	global hot_subnet_check:function(ip: addr); 
-	global check_subnet_threshold: function (v: vector of count, idx: table[subnet] of count, orig: subnet, n: count):bool ; 
-
 	const never_drop_nets: set[subnet] &redef; 
 	global dont_drop: function(a: addr): bool ; 
 	global can_drop_connectivity = F &redef ; 
 	global dont_drop_locals = T &redef ; 
 
+	global is_catch_release_active: function(ip: addr): bool;
 
 }  #### end of export 
 
@@ -123,11 +119,68 @@ export {
         global Scan::m_w_remove_scanner: event (ip: addr) ;
 }
 
+#@if ( Cluster::is_enabled() )
+#@load base/frameworks/cluster
+#redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
+#redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+#@endif
+
+
 @if ( Cluster::is_enabled() )
-@load base/frameworks/cluster
-redef Cluster::manager2worker_events += /Scan::m_w_(add|remove|update)_scanner/;
-redef Cluster::worker2manager_events += /Scan::w_m_(new|add|remove|update)_scanner/;
+
+@if ( Cluster::local_node_type() == Cluster::MANAGER )
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_add_scanner) ; 
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_remove_scanner); 
+        Broker::auto_publish(Cluster::worker_topic, Scan::m_w_update_scanner); 
+        }
+@else
+event zeek_init()
+        {
+        Broker::auto_publish(Cluster::manager_topic, Scan::w_m_new_scanner); 
+        Broker::auto_publish(Cluster::manager_topic,Scan::w_m_update_scanner); 
+        }
 @endif
+
+@endif
+
+
+
+
+## Checks if a perticular connection is already blocked and managed by netcontrol
+## and catch-and-release. If yes, we don't process this connection any-further in the
+## scan-detection module
+##
+## ip: addr - ip address which needs to be checked 
+##
+## Returns: bool - returns T or F depending if IP is managed by :bro:see:`NetControl::get_catch_release_info`
+
+function is_catch_release_active(ip: addr): bool
+{
+        if (gather_statistics)
+                s_counters$is_catch_release_active += 1;
+
+
+@ifdef (NetControl::BlockInfo)
+        local orig = ip;
+
+        local bi: NetControl::BlockInfo ;
+        bi = NetControl::get_catch_release_info(orig);
+
+        #log_reporter(fmt("is_catch_release_active: blockinfo is %s, %s", cid, bi),0);
+        ### if record bi is initialized
+        if (bi$watch_until != 0.0 )
+                return  T;
+
+        ### means empty bi
+        ### [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
+
+@endif
+
+        return F ;
+}
+
 
 
 
@@ -165,19 +218,22 @@ function is_darknet(ip: addr): bool
 
 ###### action to take when scanner is expiring 
 
+@if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interval
 {
-	log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
+	#log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
 	
 	### sending message to all workers to delete this scanner 
 	### since its inactive now 
 
 	event Scan::m_w_remove_scanner(idx); 
+	schedule 30 secs { Scan::finish_scan_summary(idx) } ; 
 
 	### delete from the manager too 
 
 	return 0 secs ; 
 } 
+@endif 
 
 function ignore_addr(a: addr)
 	{
@@ -331,59 +387,6 @@ event table_sizes()
 	#log_reporter(fmt("table_size: whitelist_ip_table: %s",|whitelist_ip_table|),0);
 	#log_reporter(fmt("table_size: whitelist_subnet_table: %s",|whitelist_subnet_table|),0);
 
-	schedule 10 mins { table_sizes() } ; 
+	schedule 10  mins { table_sizes() } ; 
 
 } 
-
-
-function check_subnet_threshold(v: vector of count, idx: table[subnet] of count, orig: subnet, n: count):bool
-{
-	if (orig !in idx)
-		idx[orig]=  0 ;
-
-### print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
-
-	 if ( idx[orig] < |v| && n >= v[idx[orig]] )
-                {
-                ++idx[orig];
-
-                return (T);
-                }
-        else
-                return (F);
-}
-
-function hot_subnet_check(ip: addr)
-{
-
-	if (known_scanners[ip]$detection == "BackscatterSeen")
-		return ; 
-
-
-	 # check for subnet scanners
-	 local scanner_subnet = mask_addr(ip, 24) ;
-
-	if (scanner_subnet !in hot_subnets)
-	{
-		local a: set[addr]  ; 
-		hot_subnets[scanner_subnet] = a ; 
-	} 
-
-	if (ip !in hot_subnets[scanner_subnet] ); 
-		add hot_subnets[scanner_subnet][ip]; 
- 
-	local n = |hot_subnets[scanner_subnet]|  ; 
-	
-	local result = F ; 
-	result = check_subnet_threshold(hot_subnets_threshold, hot_subnets_idx , scanner_subnet, n); 
-
-	#### print fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
-
-	if (result)
-	{ 
-		local _msg = fmt ("%s has %s scanners originating from it", scanner_subnet, n); 
-	
-		NOTICE([$note=HotSubnet,  $src_peer=get_local_event_peer(), $src=ip, $msg=fmt("%s", _msg)]);
-	} 
-
-}

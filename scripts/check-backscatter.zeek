@@ -75,8 +75,7 @@ function c_check_backscatter_thresholds(orig: addr, s_port: port, resp: addr): b
                         {
                                 #print fmt("CARDINAL: backscatter seen from %s (%d port: %s)", orig, |distinct_backscatter_peers[orig]|, s_port) ;
 				NOTICE([$note=BackscatterSeen, $src=orig,
-                                                $p=s_port, $src_peer=get_local_event_peer(),
-                                                $msg=fmt("backscatter seen from %s (%d port: %s)",
+                                                $p=s_port, $msg=fmt("backscatter seen from %s (%d port: %s)",
                                                         orig, d_val, s_port)]);
 
                                 ## is a scanner now
@@ -99,7 +98,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
 	local result = F; 
 	
         if ( orig !in distinct_backscatter_peers)
-                distinct_backscatter_peers[orig] = table() &mergeable;
+                distinct_backscatter_peers[orig] = table() ;
 
 	if (|distinct_backscatter_peers[orig]| > BACKSCATTER_PORT_THRESH)
 	{ return F ; } 
@@ -110,7 +109,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
         if (|distinct_backscatter_peers[orig]| <= BACKSCATTER_PORT_THRESH)
         {
 		if (rev_svc !in distinct_backscatter_peers[orig]) 
-			distinct_backscatter_peers[orig][rev_svc] = set() &mergeable;
+			distinct_backscatter_peers[orig][rev_svc] = set() ;
 
                 if ( resp !in distinct_backscatter_peers[orig][rev_svc] )
                 {
@@ -118,8 +117,7 @@ function check_backscatter_thresholds(orig: addr, rev_svc: port, resp: addr): bo
 
                         if (|distinct_backscatter_peers[orig][rev_svc][resp]| >= BACKSCATTER_THRESH)
                         {
-                                NOTICE([$note=BackscatterSeen, $src=orig,
-                                                $p=rev_svc, $src_peer=get_local_event_peer(), 
+                                NOTICE([$note=BackscatterSeen, $src=orig, $p=rev_svc, 
                                                 $msg=fmt("backscatter seen from %s (%d port: %s)",
                                                         orig, |distinct_backscatter_peers[orig]|, rev_svc)]);
 				## is a scanner now 

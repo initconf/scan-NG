@@ -7,7 +7,7 @@ export {
 	# Ignore address scanners for further scan detection after
         # scanning this many hosts.
         # 0 disables.
-        ##const ignore_scanners_threshold = 0 &redef;
+        #const ignore_scanners_threshold = 0 &redef;
 
 
          redef enum Notice::Type += {
@@ -118,7 +118,7 @@ function filterate_LowPortTroll(c: connection, established: bool, reverse: bool)
 	     service !in troll_skip_service )
 	{
 		return "T" ; 
-		#### local troll_result = check_lowporttrolling(orig, service, resp); 
+		# local troll_result = check_lowporttrolling(orig, service, resp); 
 	}
 
 	return "" ; 
@@ -126,7 +126,7 @@ function filterate_LowPortTroll(c: connection, established: bool, reverse: bool)
 
 
 
-### events for scan detections
+# events for scan detections
 
 #event connection_established(c: connection)
 #        {

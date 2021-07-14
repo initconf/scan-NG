@@ -7,11 +7,9 @@ export {
 
 	global scan_candidates: set[addr] &create_expire=1 day ; 
 
-        ########### ########### ########### ###########
 	# scan_summary module
         # authoritative table which keeps track of scanner 
 	# status and statistics
-        ########### ########### ########### ###########
 
 	global LOGGING_TIME = 60 mins ; # 60 mins ; 
 	global _max_expire_time = 4 hrs  ; # 1 day ; 
@@ -45,7 +43,7 @@ export {
         global manager_stats: table[addr] of scan_stats=table()
                         &create_expire=20 secs   &expire_func=report_manager_stats ;
 
-        #### setting up logging for scan_summary.log
+        #setting up logging for scan_summary.log
         redef enum Log::ID += { summary_LOG };
 
         type scan_stats_log: record {
@@ -60,7 +58,7 @@ export {
                 total_conn: count &default=0 &log &optional ;
                 total_hosts_scanned: count &default=0  &log &optional ;
 
-                ### computed value no need to store
+                # computed value no need to store
                 duration: interval &log &optional ;
                 scan_rate: double &log &optional ;
                 country_code: string &log &optional ;
@@ -74,6 +72,26 @@ export {
 	 global log_scan_summary:function (ss: scan_stats, state: log_state) ;
 	 global aggregate_scan_stats: event(ss: scan_stats); 
 
+        # Used for distance calculations
+        global local_ip: addr = 128.3.0.0 &redef;
+}
+
+
+event zeek_init()
+{
+        when (local myaddrs = lookup_hostname(gethostname())) {
+                for (ip in myaddrs) {
+                        if (is_v4_addr(ip)) {
+                                Scan::local_ip = ip;
+                                local myloc = lookup_location(Scan::local_ip);
+                                if (myloc?$city) {
+                                        print fmt( "Using %s, %s as local location", 
+								myloc$city, myloc$region);
+                                }
+                                break;
+                        }
+                }
+        }
 }
 
 event zeek_init() &priority=5
@@ -112,7 +130,7 @@ function Scan::expire_worker_stats(t: table[addr] of scan_stats, idx: addr): int
 	} 
 	else if (idx in scan_candidates && network_time() - t[idx]$start_ts < _max_expire_time ) 	
 	{ 	
-		## we just hold scan_candidate start time more in memory 
+		#we just hold scan_candidate start time more in memory 
 		# until its flagged as scanner - >= 1 conn/ day sensitivity 
 		
 		#log_reporter(fmt("expire_worker_stats: extended timer:  %s", t[idx]),10); 
@@ -125,7 +143,7 @@ function Scan::expire_worker_stats(t: table[addr] of scan_stats, idx: addr): int
 @endif 
 
 
-## Entry function to scan_summary - this is called by check_scan.bro
+# Entry function to scan_summary - this is called by check_scan.bro
 #scan_summary(c: connection)
 
 @if ( ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled()))
@@ -193,8 +211,12 @@ function Scan::report_manager_stats(t: table[addr] of scan_stats, idx: addr): in
 event Scan::aggregate_scan_stats(ss: scan_stats)
 {
         #log_reporter(fmt ("inside aggregate_scan_stats %s", ss),10);
+        
+	local orig = ss$scanner ;
 
-        local orig = ss$scanner ;
+	if ( orig !in known_scanners) 
+		return ; 
+
 
 	if (orig !in manager_stats)
        	{
@@ -208,7 +230,7 @@ event Scan::aggregate_scan_stats(ss: scan_stats)
 	} 
 		
 	manager_stats[orig]$detection = known_scanners[orig]$detection ; 
-        ### update all the variables and aggregate based on what workers are returning
+        # update all the variables and aggregate based on what workers are returning
 
 	local m_start_ts = manager_stats[orig]$start_ts ; 
 	local m_end_ts = manager_stats[orig]$end_ts  ; 
@@ -228,14 +250,14 @@ event Scan::aggregate_scan_stats(ss: scan_stats)
 function log_scan_summary(ss: scan_stats, state: log_state)
 {
 
-        log_reporter(fmt("log_scan_summary: %s: state: %s", ss, state),5) ;
+        #log_reporter(fmt("log_scan_summary: %s: state: %s", ss, state),5) ;
 
         local info: scan_stats_log ;
 
-        log_reporter(fmt("LSS: log_scan_summary: KS: %s, scan_summary: %s", known_scanners[ss$scanner],ss),5) ;
-        ### ash local detect_ts = known_scanners[ss$scanner]$detect_ts  ;
+        #log_reporter(fmt("LSS: log_scan_summary: KS: %s, scan_summary: %s", known_scanners[ss$scanner],ss),5) ;
+        # ash local detect_ts = known_scanners[ss$scanner]$detect_ts  ;
 
-        ### preserve detect_ts until scan_summary expires now
+        # preserve detect_ts until scan_summary expires now
         if (ss$scanner in manager_stats)
                 manager_stats[ss$scanner]$detect_ts = ss$detect_ts ;
         else
@@ -254,7 +276,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
         info$total_conn = ss$total_conn ;
         info$total_hosts_scanned = double_to_count(hll_cardinality_estimate(ss$hosts)); #|ss$hosts| ;
 	#info$total_hosts_scanned = |ss$hosts|; 
-        info$duration = info$end_ts - info$start_ts ; ### ss$end_ts - ss$start_ts ;
+        info$duration = info$end_ts - info$start_ts ; # ss$end_ts - ss$start_ts ;
         info$scan_rate = info$total_hosts_scanned == 0  ? 0 : interval_to_double(info$duration)/info$total_hosts_scanned ;
         local geoip_info = lookup_location(ss$scanner) ;
 	local peer = Cluster::node; 
@@ -266,10 +288,10 @@ function log_scan_summary(ss: scan_stats, state: log_state)
         info$city = geoip_info?$city ? geoip_info$city : "" ;
 
         info$distance = 0 ;
-        info$distance = haversine_distance_ip(Scan::home_base, ss$scanner) ;
+        info$distance = haversine_distance_ip(Scan::local_ip, ss$scanner) ;
         #info$event_peer = ss$event_peer ;
 
-        log_reporter(fmt("log_scan_summary: info is : %s", info),5) ;
+        #log_reporter(fmt("log_scan_summary: info is : %s", info),5) ;
 
 	Log::write(Scan::summary_LOG, info);
 }
@@ -279,7 +301,7 @@ function log_scan_summary(ss: scan_stats, state: log_state)
 @if ( ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (!Cluster::is_enabled()))
 event finish_scan_summary(idx: addr)
 {
-	log_reporter(fmt("finish_scan_summary: %s, %s", idx, manager_stats[idx]),10); 
+	#log_reporter(fmt("finish_scan_summary: %s, %s", idx, manager_stats[idx]),10); 
 	#log_scan_summary(manager_stats[idx], FINISH);
 	#manager_stats[idx]$state =  FINISH;
 

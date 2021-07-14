@@ -1,4 +1,4 @@
-### extention of bro-1.5.3 landmine and bro-2.x darknet.bro 
+# extention of bro-1.5.3 landmine and bro-2.x darknet.bro 
 
 module Scan; 
 
@@ -20,11 +20,11 @@ export
 	global landmine_scan_summary:
                 function(t: table[addr] of set[addr], orig: addr): interval;
 
-        global landmine_distinct_peers: table[addr] of set[addr]
+        global landmine_distinct_peers: table[addr] of set[addr]=table() 
                 &read_expire = 1 day &expire_func=landmine_scan_summary &redef;
 
 
-	###	Expire functions that trigger summaries.
+	#	Expire functions that trigger summaries.
 	global c_landmine_scan_summary: 
 		function(t: table[addr] of opaque of cardinality, orig: addr): interval;
 
@@ -47,7 +47,7 @@ export
 
 function landmine_scan_summary(t: table[addr] of set[addr], orig: addr): interval
 {
-	log_reporter(fmt("landmine_scan_summary: %s", t[orig]),0); 
+	log_reporter(fmt("landmine_scan_summary: for %s is %s", orig, |t[orig]|),0); 
         return 0 secs;
 }
 
@@ -85,6 +85,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 
 			local msg = fmt("landmine address trigger %s [%s] %s", orig, d_port, iplist );
 			NOTICE([$note=LandMine, $src=orig, $p=d_port, $id=cid, $msg=msg]);
+			#log_reporter(fmt("LandMine: %s, %s",orig, msg),11); 
 			return T; 
 		} 
 	} 
@@ -96,7 +97,7 @@ function check_LandMine(cid: conn_id, established: bool, reversed: bool ): bool
 #	} 
 #	hll_cardinality_add(c_landmine_distinct_peers[orig], resp);	
 #
-#	#### local result = check_landmine_scan(orig, d_port, resp) ;
+#	# local result = check_landmine_scan(orig, d_port, resp) ;
 #
 #	local d_val = double_to_count(hll_cardinality_estimate(c_landmine_distinct_peers[orig])) ;
 #	
@@ -161,9 +162,9 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 	if (resp_p in Scan::landmine_ignore_ports) 
 		return "" ; 
 
-	### min membership check if subnets-txt file is loaded 	
-	### TODO: raise an alarm or take corrective actions 
-	### right now made failsafe - atleast 1 subnet needed 
+	# min membership check if subnets-txt file is loaded 	
+	# TODO: raise an alarm or take corrective actions 
+	# right now made failsafe - atleast 1 subnet needed 
 
 	if (|Site::subnet_table| < MIN_SUBNET_CHECK) 
 	{ 
@@ -187,8 +188,8 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 	return ""; 
 }
 
-### TODO: for future - add liveNet identification for in case subnet or parts of subnet from darknet 
-### wakes up 
+# TODO: for future - add liveNet identification for in case subnet or parts of subnet from darknet 
+# wakes up 
 
 #@if ( ! Cluster::is_enabled())
 #event connection_state_remove(c: connection)
@@ -198,18 +199,18 @@ function filterate_LandMineScan(c: connection, darknet: bool ): string
 #@endif 
 
 
-#const TCP_INACTIVE = 0; ##< Endpoint is still inactive.
-#const TCP_SYN_SENT = 1; ##< Endpoint has sent SYN.
-#const TCP_SYN_ACK_SENT = 2;     ##< Endpoint has sent SYN/ACK.
-#const TCP_PARTIAL = 3;  ##< Endpoint has sent data but no initial SYN.
-#const TCP_ESTABLISHED = 4;      ##< Endpoint has finished initial handshake regularly.
-#const TCP_CLOSED = 5;   ##< Endpoint has closed connection.
-#const TCP_RESET = 6;    ##< Endpoint has sent RST.
+#const TCP_INACTIVE = 0; #< Endpoint is still inactive.
+#const TCP_SYN_SENT = 1; #< Endpoint has sent SYN.
+#const TCP_SYN_ACK_SENT = 2;     #< Endpoint has sent SYN/ACK.
+#const TCP_PARTIAL = 3;  #< Endpoint has sent data but no initial SYN.
+#const TCP_ESTABLISHED = 4;      #< Endpoint has finished initial handshake regularly.
+#const TCP_CLOSED = 5;   #< Endpoint has closed connection.
+#const TCP_RESET = 6;    #< Endpoint has sent RST.
 
 # UDP values for :bro:see:`endpoint` *state* field.
 # todo:: these should go into an enum to make them autodoc'able.
-#const UDP_INACTIVE = 0; ##< Endpoint is still inactive.
-#const UDP_ACTIVE = 1;   ##< Endpoint has sent something.
+#const UDP_INACTIVE = 0; #< Endpoint is still inactive.
+#const UDP_ACTIVE = 1;   #< Endpoint has sent something.
 
 
 # vern's original landline detector from 1.5.3 era 

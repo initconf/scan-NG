@@ -10,7 +10,7 @@ export {
 
 	global concurrent_scanners_per_port: table[port] of opaque of cardinality 
 		&default = function(n: any): opaque of cardinality 
-		{ return hll_cardinality_init(0.1, 0.99); } &create_expire = 1 days ;
+		{ return hll_cardinality_init(0.1, 0.99); } &create_expire = 100 days ;
 
         global flux_density_idx: table[port] of count &create_expire=7 days;
         global flux_density_threshold: vector of count = { 50, 100, 250, 25000, 50000, 75000, 100000, 200000, 250000 } ;
@@ -25,7 +25,7 @@ function check_flux_density_threshold(v: vector of count, idx: table[port] of co
 {
         if (orig !in idx)
                 idx[orig]=  0 ;
-	### print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
+	# print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
 
          if ( idx[orig] < |v| && n >= v[idx[orig]] )
                 {
@@ -59,7 +59,7 @@ function check_port_flux_density(d_port : port, ip: addr): count
 	if (result) 
 	{ 
 		local msg = fmt ("%s has huge spike with %s uniq scanners", d_port, d_val); 
-		print fmt ("%s", msg); 
+		#print fmt ("%s", msg); 
 		#NOTICE([$note=ScanSpike, $p=d_port, $src_peer=get_event_peer()$descr, $msg=msg]);
 		NOTICE([$note=ScanSpike, $p=d_port, $msg=msg]);
 	} 

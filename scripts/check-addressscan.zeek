@@ -59,7 +59,7 @@ export {
 	
 
 
-	### addressscan
+	# addressscan
         # Ignore address scanners for further scan detection after
         # scanning this many hosts.
         # 0 disables.
@@ -67,11 +67,11 @@ export {
 
 
 
-	#### changed this to use hyperloglog functions
-        #global distinct_peers: table[addr] of set[addr]
+	# changed this to use hyperloglog functions
+        # global distinct_peers: table[addr] of set[addr]
         #        &read_expire = 1 day &expire_func=scan_sum &redef;
 
-        #global distinct_peers: table[addr] of opaque of cardinality
+        # global distinct_peers: table[addr] of opaque of cardinality
         #       &default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
         #        &read_expire = 1 day &expire_func=scan_sum &redef;
 
@@ -104,7 +104,7 @@ function thresh_check(v: vector of count, idx: table[addr] of count,
 function scan_sum(t: table[addr] of set[addr], orig: addr): interval
 {
 	
-	### log_reporter(fmt("scan_sum invoked for %s", t[orig]),0); 
+	# log_reporter(fmt("scan_sum invoked for %s", t[orig]),0); 
 
         local num_distinct_peers = orig in t ? |t[orig]| : 0;
 
@@ -140,7 +140,7 @@ function check_address_scan_thresholds (orig: addr, resp: addr, outbound: bool, 
 } 
 
 
-#### filterate_AddresssScan runs on workers and does all the pre-filtering here
+# filterate_AddresssScan runs on workers and does all the pre-filtering here
 
 function filterate_AddressScan(c: connection, established: bool, reverse: bool): string 
 {
@@ -148,7 +148,7 @@ function filterate_AddressScan(c: connection, established: bool, reverse: bool):
 	 if (gather_statistics)
                 s_counters$c_addressscan_filterate += 1  ;
 	
-	### only deal with tcp 
+	# only deal with tcp 
 	local trans = get_port_transport_proto(c$id$resp_p);
 
 
@@ -165,30 +165,30 @@ function filterate_AddressScan(c: connection, established: bool, reverse: bool):
 	local outbound = Site::is_local_addr(orig);
 	local orig_p = c$id$orig_p ; 
 
-	### unless a known_scanner consider everything a scanner 	
+	# unless a known_scanner consider everything a scanner 	
 	if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
 			return "" ; 
 
 
-	### we do not watch for local address 
-	### we will do internal scan-detection seperately
-	### using all-check 
+	# we do not watch for local address 
+	# we will do internal scan-detection seperately
+	# using all-check 
 
 	if (Site::is_local_addr(orig)) 
 		return "" ; 
 
-	### optional filters to reduce load on manager 
-	### we ignore all darknet connections since LandMine will take care of it 
+	# optional filters to reduce load on manager 
+	# we ignore all darknet connections since LandMine will take care of it 
 
 	if (is_darknet(resp))
 		return "" ; 
 
-	### we can ignore all the non-existing services since knockknock can take 
-	### care of it
+	# we can ignore all the non-existing services since knockknock can take 
+	# care of it
 	#if (resp in Site::host_profiles)
 	#	return "" ; 
 
-	#### issue is how to identify legit connections and not send those 
+	# issue is how to identify legit connections and not send those 
 
 	if (established) 	
 		return "" ; 
@@ -220,12 +220,12 @@ function filterate_AddressScan(c: connection, established: bool, reverse: bool):
 	if ( orig in ignored_scanners)
 		return "";
 
-	#### log_reporter(fmt("filterate_AddressScan: %s, %s, %s", c$id, established, reverse),0); 
+	# log_reporter(fmt("filterate_AddressScan: %s, %s, %s", c$id, established, reverse),0); 
 	
 	return "A" ; 
 } 
 
-### runs on manager to consolidate all connections which workers see
+# runs on manager to consolidate all connections which workers see
 function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool 
 { 
 
@@ -248,17 +248,17 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
         local outbound = Site::is_local_addr(orig);
         local orig_p = cid$orig_p ;
 
-#### TODO 
+# TODO 
 #	if (orig in c_distinct_backscatter_peers)
 #		if (orig_p in c_distinct_backscatter_peers[orig]) 
 #		{ 
-#		#	if (|distinct_backscatter_peers[orig][orig_p]| < 2) 
+		 	#if (|distinct_backscatter_peers[orig][orig_p]| < 2) 
 #			local bsc = double_to_count(hll_cardinality_estimate(c_distinct_backscatter_peers[orig])) ;	
 #			if ( bsc < 2) 
 #				result = F ;
 #		} 
 #	
-	########## log_reporter(fmt("add_to_addressscan_cache: check_AddressScan: %s", c$id),0); 
+	# log_reporter(fmt("add_to_addressscan_cache: check_AddressScan: %s", c$id),0); 
 
 	local resp_count = double_to_count(hll_cardinality_estimate(c_distinct_peers[orig])) ;
 
@@ -346,13 +346,13 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 
 			}
 
-		### backscater check - we don't want to send events to manager for addressscan if 	
-		### this is a backscatter traffic 
-		### which is generally characterized by |s_port| == 1 
+		# backscater check - we don't want to send events to manager for addressscan if 	
+		# this is a backscatter traffic 
+		# which is generally characterized by |s_port| == 1 
 
 
 
-	}   ### end of iF 
+	}   # end of iF 
 
 	return result ; 
 } 
@@ -380,16 +380,16 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #	}
 
 
-### events for scan detections
+# events for scan detections
 
-#event connection_established(c: connection)
+# event connection_established(c: connection)
 #        {
 #        local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
 #        Scan::check_AddressScan(c, T, is_reverse_scan);
 #
-#        #local trans = get_port_transport_proto(c$id$orig_p);
-#        #if ( trans == tcp && ! is_reverse_scan && TRW::use_TRW_algorithm )
-#        #       TRW::check_TRW_scan(c, conn_state(c, trans), F);
+#        // local trans = get_port_transport_proto(c$id$orig_p);
+#        // if ( trans == tcp && ! is_reverse_scan && TRW::use_TRW_algorithm )
+#        //       TRW::check_TRW_scan(c, conn_state(c, trans), F);
 #        }
 #
 #event partial_connection(c: connection)
@@ -402,14 +402,14 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #    local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
 #        Scan::check_AddressScan(c, F, is_reverse_scan);
 #
-#        #local trans = get_port_transport_proto(c$id$orig_p);
-#        #if ( trans == tcp && TRW::use_TRW_algorithm )
-#        #       TRW::check_TRW_scan(c, conn_state(c, trans), F);
+#        // local trans = get_port_transport_proto(c$id$orig_p);
+#        // if ( trans == tcp && TRW::use_TRW_algorithm )
+#        //       TRW::check_TRW_scan(c, conn_state(c, trans), F);
 #        }
 #
 #event connection_half_finished(c: connection)
 #        {
-#        # Half connections never were "established", so do scan-checking here.
+#        //# Half connections never were "established", so do scan-checking here.
 #        Scan::check_AddressScan(c, F, F);
 #        }
 #
@@ -419,9 +419,9 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #
 #        Scan::check_AddressScan(c, F, is_reverse_scan);
 #
-#        #local trans = get_port_transport_proto(c$id$orig_p);
-#        #if ( trans == tcp && TRW::use_TRW_algorithm )
-#        #       TRW::check_TRW_scan(c, conn_state(c, trans), is_reverse_scan);
+#        // #local trans = get_port_transport_proto(c$id$orig_p);
+#        // #if ( trans == tcp && TRW::use_TRW_algorithm )
+#        // #       TRW::check_TRW_scan(c, conn_state(c, trans), is_reverse_scan);
 #        }
 #
 #event connection_reset(c: connection)
@@ -429,7 +429,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 #        if ( c$orig$state == TCP_INACTIVE || c$resp$state == TCP_INACTIVE )
 #        {
 #        local is_reverse_scan = (c$orig$state == TCP_INACTIVE && c$id$resp_p !in likely_server_ports);
-#                # We never heard from one side - that looks like a scan.
+#                // # We never heard from one side - that looks like a scan.
 #                Scan::check_AddressScan(c, c$orig$size + c$resp$size > 0, is_reverse_scan);
 #        }
 #        }

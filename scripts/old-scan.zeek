@@ -404,7 +404,7 @@ function check_scan(c: connection, established: bool, reverse: bool): bool
 				# Check for threshold if not outbound.
 				if ( ! shut_down_thresh_reached[orig] &&
 				     n >= shut_down_thresh &&
-				     ! outbound && orig !in Site::neighbor_nets) #### && service != 3389/tcp)
+				     ! outbound && orig !in Site::neighbor_nets) # && service != 3389/tcp)
 					{
 
 

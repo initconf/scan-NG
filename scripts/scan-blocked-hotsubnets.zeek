@@ -11,7 +11,7 @@ export {
 	}; 
 
 
-	# /YURTT/feeds/BRO-feeds/WIRED.blocknet 
+	# T/feeds/BRO-feeds/WIRED.blocknet 
 	# header info 
 	#fields NETWORK    BLOCK_FLAVOR
 	#2.187.44.0/24   blocknet
@@ -27,7 +27,7 @@ export {
 	};
 
 	global blocked_nets: table[subnet] of blocknet_Val = table() &redef ; 
-	global blocknet_feed="/YURT/feeds/BRO-feeds/WIRED.blocknet" &redef ; 
+	global blocknet_feed="/feeds/BRO-feeds/WIRED.blocknet" &redef ; 
 } 
 
 
@@ -42,9 +42,9 @@ export {
 } 
 
 
-#### FAILURE-CHECK 
-### we catch the error in subnet feed is empty and populate blocked_nets with local_nets 
-### so that LandMine detection doesn't block accidently 
+# FAILURE-CHECK 
+# we catch the error in subnet feed is empty and populate blocked_nets with local_nets 
+# so that LandMine detection doesn't block accidently 
 
 
 hook Notice::policy(n: Notice::Info)
@@ -56,8 +56,8 @@ hook Notice::policy(n: Notice::Info)
 }
 
 # handle this failure 
-# Reporter::WARNING  /YURT/feeds/BRO-feeds/WIRED.blocknet.2/Input::READER_ASCII: 
-#	Init: cannot open /YURT/feeds/BRO-feeds/WIRED.blocknet.2    (empty)
+# Reporter::WARNING  /feeds/BRO-feeds/WIRED.blocknet.2/Input::READER_ASCII: 
+#	Init: cannot open /feeds/BRO-feeds/WIRED.blocknet.2    (empty)
 
 event reporter_warning(t: time , msg: string , location: string )
 {
@@ -74,8 +74,7 @@ event Input::end_of_data(name: string, source: string)
 	
 	if (/WIRED.blocknet/ in name) 
 	{ 
-		print fmt ("name is %s source is %s", name, source); 
-		print fmt("digested  %s records in %s",|source|, source);
+		print fmt ("name=%s, source=%s, records=%s", name, source, |source|); 
 	} 
 	# since subnet table is zero size
        	# we poulate with local_nets
@@ -115,7 +114,7 @@ event zeek_init() &priority=10
         Input::add_table([$source=blocknet_feed, $name="blocked_nets", $idx=blocknet_Idx, $val=blocknet_Val,  $destination=blocked_nets, $mode=Input::REREAD, $ev=line]);  
         
 
- ####     Input::add_table([$source=blocknet_feed, $name="blocked_nets", $idx=blocknet_Idx, $val=blocknet_Val,  $destination=blocked_nets, $mode=Input::REREAD]); 
+ #     Input::add_table([$source=blocknet_feed, $name="blocked_nets", $idx=blocknet_Idx, $val=blocknet_Val,  $destination=blocked_nets, $mode=Input::REREAD]); 
  #       $pred(typ: Input::Event, left: blocknet_Idx, right: blocknet_Val = { left$epo = to_lower(left$epo); return T;) }]);
 }
 
@@ -136,7 +135,7 @@ function check_subnet_threshold(v: vector of count, idx: table[subnet] of count,
         if (orig !in idx)
                 idx[orig]=  0 ;
 
-### print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
+# print fmt ("orig: %s and IDX_orig: %s and n is: %s and v[idx[orig]] is: %s", orig, idx[orig], n, v[idx[orig]]);
 
          if ( idx[orig] < |v| && n >= v[idx[orig]] )
                 {
@@ -172,7 +171,7 @@ function hot_subnet_check(ip: addr)
         local result = F ;
         result = check_subnet_threshold(hot_subnets_threshold, hot_subnets_idx , scanner_subnet, n);
 
-        #### print fmt ("%s has %s scanners originating from it", scanner_subnet, n);
+        # print fmt ("%s has %s scanners originating from it", scanner_subnet, n);
 
         if (result)
         {

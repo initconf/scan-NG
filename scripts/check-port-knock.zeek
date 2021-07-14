@@ -1,20 +1,20 @@
-### module to build network profile for scan detection 
-### this module builds the 'ground-truth' ie prepares the list 
-### legit LBNL servers and ports based on incoming SF.
-### premise: if external IP connecting to something not in this list
-### is likely a scan if (1) incoming connections meet fanout criteria 
+# module to build network profile for scan detection 
+# this module builds the 'ground-truth' ie prepares the list 
+# legit LBNL servers and ports based on incoming SF.
+# premise: if external IP connecting to something not in this list
+# is likely a scan if (1) incoming connections meet fanout criteria 
 
-### basically, the script works like this: 
-### src: knock .
-### src: knock ..	
-### src: knock ...
-### bro: bye-bye !!! 
+# basically, the script works like this: 
+# src: knock .
+# src: knock ..	
+# src: knock ...
+# bro: bye-bye !!! 
 
-### todo: 
-### a. need backscatter identification (same src port diff dst port for scanner
-### b. address 80/tcp, 443/tcp, 861/tcp, 389/tcp (sticky config)  - knock_high_threshold_ports 
-### c. GeoIP integration - different treatment to > 130 miles IP vs US IPs vs Non-US IPs
-### d. False +ve suppression and statistics _
+# todo: 
+# a. need backscatter identification (same src port diff dst port for scanner
+# b. address 80/tcp, 443/tcp, 861/tcp, 389/tcp (sticky config)  - knock_high_threshold_ports 
+# c. GeoIP integration - different treatment to > 130 miles IP vs US IPs vs Non-US IPs
+# d. False +ve suppression and statistics _
 
 
 module Scan;
@@ -61,7 +61,7 @@ export {
 
 	
 	# scan candidate 
-	global likely_port_scanner: table[addr,addr] of set[port] &read_expire=1 day ; #### &synchronized ; 
+	global likely_port_scanner: table[addr,addr] of set[port] &read_expire=1 day ; # &synchronized ; 
 	
 	#global c_likely_port_scanner: table[addr,port] of opaque of cardinality
         #        &default = function(n: any): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
@@ -92,7 +92,7 @@ function check_knockknock_port(orig: addr, d_port: port, resp: addr): bool
 	local medium_threshold_flag=F; 
 	local low_threshold_flag=F; 
 
-        # # # # # ## # # # # #
+        # # # # # # # # # # #
         # code and heuristics of to determine if orig is inface a scanner
 
 	# gather geoip distance
@@ -167,7 +167,7 @@ function check_knockknock_port(orig: addr, d_port: port, resp: addr): bool
 
 			Scan::add_to_known_scanners(orig, "KnockKnockPort"); 
 		} 
-        # # # # # ## # # # # #
+        # # # # # # # # # # #
 	return result ; 
 } 
 
@@ -175,7 +175,7 @@ function check_knockknock_port(orig: addr, d_port: port, resp: addr): bool
 function check_KnockKnockPort(cid: conn_id, established: bool, reverse: bool ): bool 
 {
 
-	## already filterated connection 
+	# already filterated connection 
 
 	local orig = cid$orig_h ;
 	local resp = cid$resp_h ;
@@ -204,7 +204,7 @@ function check_KnockKnockPort(cid: conn_id, established: bool, reverse: bool ): 
 
 	local result = check_knockknock_port(orig, d_port, resp); 
 
-	#### TODO: this should go down further into check-scan-impl.bro code 
+	# TODO: this should go down further into check-scan-impl.bro code 
 	if (result) 
 	{ 
 		# Important want ot make sure we update the detect_ts to nearest time of occurence 
@@ -219,7 +219,7 @@ return F ;
 }
 
 
-####### clusterizations 
+# clusterizations 
 
 event udp_request(u: connection )
 {
@@ -261,7 +261,7 @@ function filterate_KnockKnockPort(c: connection, darknet: bool ): string
         if (Site::is_local_addr(c$id$orig_h))
                 return "";
 
-	###local darknet = Scan::is_darknet(c$id$resp_h); 
+	#local darknet = Scan::is_darknet(c$id$resp_h); 
 
 	# only worry about TCP connections 	
 	# we deal with udp and icmp scanners differently 
@@ -294,7 +294,7 @@ function filterate_KnockKnockPort(c: connection, darknet: bool ): string
 	# don't need to process known_scanners again 	
 	if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
 	{ 
-		##	log_reporter(fmt("check_KnockKnockPort: orig in known_scanner"),0); 
+		#	log_reporter(fmt("check_KnockKnockPort: orig in known_scanner"),0); 
 		return ""; 
 	} 
 

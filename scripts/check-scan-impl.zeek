@@ -10,6 +10,8 @@ export {
 	#global Scan::w_m_update_scanner: event(ss: scan_info); 
 	#global Scan::m_w_remove_scanner: event (ip: addr) ; 
 
+
+	global Scan::drop_it: function(src: addr, detect: string); 
 } 
 
 #@if ( Cluster::is_enabled() )
@@ -19,17 +21,17 @@ export {
 #@endif
 
 
-## Final function which calls various scan-detection heuristics, if activated 
-## as specificed in scan-user-config.bro 
-##
-## ci: conn_info  - contains conn_id + first seen timestamp for the connection
-## established: bool - if connection was established or not 
-## reverse: bool - if initial sy/ack was seen from the dst without a syn from orig 
-## filtrator: string  - consist of K(knockknock), L(LandMine), B(BackScatter), A(AddressScan) 
-## if any of the above filteration is true then based on filtrator string - that specific heuristic will
-## be applied to the connection 
-##
-## Returns: bool - returns T or F depending if IP is a scanner
+# Final function which calls various scan-detection heuristics, if activated 
+# as specificed in scan-user-config.bro 
+#
+# ci: conn_info  - contains conn_id + first seen timestamp for the connection
+# established: bool - if connection was established or not 
+# reverse: bool - if initial sy/ack was seen from the dst without a syn from orig 
+# filtrator: string  - consist of K(knockknock), L(LandMine), B(BackScatter), A(AddressScan) 
+# if any of the above filteration is true then based on filtrator string - that specific heuristic will
+# be applied to the connection 
+#
+# Returns: bool - returns T or F depending if IP is a scanner
 function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: bool, filtrator: string ): bool 
 {
 
@@ -40,6 +42,7 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 
 	local cid=ci$cid ; 
 	local orig=ci$cid$orig_h; 
+
 
 	if (activate_LandMine && /L/ in filtrator && check_LandMine(cid, established, reverse))
 	{
@@ -71,11 +74,11 @@ function Scan::run_scan_detection(ci: conn_info, established: bool, reverse: boo
 	return T ; 
 }
 
-####### clusterizations
+## clusterizations
 
-#### main function to start sending data from worker to manager
-### where manager will determine if scanner or not based on values
-### collected from all the workers
+# main function to start sending data from worker to manager
+# where manager will determine if scanner or not based on values
+# collected from all the workers
 
 
 function populate_table_start_ts(ci: conn_info)
@@ -91,19 +94,19 @@ function populate_table_start_ts(ci: conn_info)
 
         table_start_ts[orig]$conn_count += 1 ;
 
-        ### gather the smallest timestamp for that IP
-        ### different workers see different ts
+        # gather the smallest timestamp for that IP
+        # different workers see different ts
         if (table_start_ts[orig]$ts > ci$ts)
                 table_start_ts[orig]$ts  = ci$ts ;
 } 
 
 
-## Entry point from check-scan function - this function dispatches connection to manager if cluster is enabled 
-## or calls run_scan_detection for standalone instances
-## c: connection record
-## established: bool - if connection is established 
-## reverse: bool - 
-## filtrator: string - comprises of K,L,A,B depending on which one of the filteration was successful
+# Entry point from check-scan function - this function dispatches connection to manager if cluster is enabled 
+# or calls run_scan_detection for standalone instances
+# c: connection record
+# established: bool - if connection is established 
+# reverse: bool - 
+# filtrator: string - comprises of K,L,A,B depending on which one of the filteration was successful
 function check_scan_cache(c: connection, established: bool, reverse: bool, filtrator: string )
 {
 
@@ -132,11 +135,10 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
                 return;
 	} 
 
-	#### we run knockknockport local on each worker since portscan is too expensive 
-	#### in term of traffic between nodes and its not worth this conjestion 
-	
+	# we run knockknockport local on each worker since portscan is too expensive 
+	# in term of traffic between nodes and its not worth this conjestion 
 
-        ### if standalone then we check on bro node else we deligate manager to handle this
+        # if standalone then we check on bro node else we deligate manager to handle this
         @if ( Cluster::is_enabled() )
                 event Scan::w_m_new_scanner(ci, established, reverse, filtrator);
         @else
@@ -147,13 +149,13 @@ function check_scan_cache(c: connection, established: bool, reverse: bool, filtr
 }
 
 
-## Event runs on manager in cluster setup. All the workers run check_scan_cache locally and 
-## dispatch conn_info to manager which aggregates the connections of a source IP and 
-## calls heuristics for scan-dection 
-## ci: conn_info - conn_id + timestamp 
-## established: bool - if connect was established 
-## reverse: bool 
-## filtrator: string - comprises of K,L,A,B depending on which one of the filteration was successful 
+# Event runs on manager in cluster setup. All the workers run check_scan_cache locally and 
+# dispatch conn_info to manager which aggregates the connections of a source IP and 
+# calls heuristics for scan-dection 
+# ci: conn_info - conn_id + timestamp 
+# established: bool - if connect was established 
+# reverse: bool 
+# filtrator: string - comprises of K,L,A,B depending on which one of the filteration was successful 
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, filtrator: string )
 {
@@ -188,7 +190,7 @@ event Scan::w_m_new_scanner(ci: conn_info, established: bool, reverse: bool, fil
 @endif
 
 
-### update workers with new scanner info
+# update workers with new scanner info
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER )
 event Scan::m_w_add_scanner (ss: scan_info) 
 {
@@ -211,8 +213,8 @@ event Scan::m_w_add_scanner (ss: scan_info)
 }
 @endif
 
-## in the event when catch-n-release releases an IP - we change the known_scanners[ip]$status = F 
-## so that workers again start sending conn_info to manager to reflag as scanner. 
+# in the event when catch-n-release releases an IP - we change the known_scanners[ip]$status = F 
+# so that workers again start sending conn_info to manager to reflag as scanner. 
 @if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER )
 event Scan::w_m_update_scanner(ss: scan_info) 
 {
@@ -223,8 +225,8 @@ event Scan::w_m_update_scanner(ss: scan_info)
 		Scan::add_to_known_scanners(ss$scanner, ss$detection); 
 	} 
 
-	### now that Manager added the worker reported portscan to its known_scanner
-	#### manager needs to inform other workers of this new scanner 
+	# now that Manager added the worker reported portscan to its known_scanner
+	# manager needs to inform other workers of this new scanner 
 
 	event Scan::m_w_add_scanner(ss); 
 } 
@@ -242,8 +244,8 @@ event Scan::m_w_update_scanner (ip: addr, status_flag: bool )
 	{ 
 		known_scanners[ip]$status = status_flag ; 
 	} 
-	### ip !in known_scanners on workers if m_w_remove_scanner has kicked in 
-	### since m_w_update_scanner is sent by netcontrol-catch-relase expire
+	# ip !in known_scanners on workers if m_w_remove_scanner has kicked in 
+	# since m_w_update_scanner is sent by netcontrol-catch-relase expire
 	#else 
 		#log_reporter(fmt ("check-scan-impl: m_w_update_scanner: %s, %s NOT found in known_scanners - PROBLEM", ip, status_flag), 0);
 
@@ -269,11 +271,11 @@ event Scan::m_w_remove_scanner(ip: addr)
 @endif 
 
 
-## populates known_scanners table and if scan_summary is enabled then 
-## handles initialization of scan_summary table as well. 
-## also logs first Detection entry in scan_summary 
-## orig: addr - IP address of scanner 
-## detect: string - what kind of scan was it - knock, address, landmine, backscatter 
+# populates known_scanners table and if scan_summary is enabled then 
+# handles initialization of scan_summary table as well. 
+# also logs first Detection entry in scan_summary 
+# orig: addr - IP address of scanner 
+# detect: string - what kind of scan was it - knock, address, landmine, backscatter 
 function Scan::add_to_known_scanners(orig: addr, detect: string)
 {
 	#log_reporter(fmt("3: Scanner found: [add_to_known_scanners]: orig: %s, detect: %s", orig, detect),0); 
@@ -291,7 +293,6 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 		Scan::known_scanners[orig]$detect_ts = network_time(); 
                 Scan::known_scanners[orig]$event_peer = fmt ("%s", peer_description);
         
-
 @if (( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER ) || (!Cluster::is_enabled()))
 	if (orig in worker_stats) 
 		worker_stats[orig]$detection = detect ; 
@@ -299,6 +300,20 @@ function Scan::add_to_known_scanners(orig: addr, detect: string)
 
 	#log_reporter(fmt("add_to_known_scanners: known_scanners[orig]: DETECT: %s, %s, %s, %s, %s", detect, orig, Scan::known_scanners [orig], network_time(), current_time()),0);
 
-
 }
+
+# 2021-02-25 ashish - we don't truly need this function
+# since drops are delegated to notice->netcontrol pipeline 
+
+function Scan::drop_it(src: addr, detect: string)
+{
+	 local ci = NetControl::get_catch_release_info(src);
+                if ( ci$watch_until == double_to_time(0) )
+                        {
+			local msg =detect ; 
+                        local addl = fmt("ACTION_DROP: %s", msg) ; 
+                        local res = NetControl::drop_address_catch_release(src, addl);
+                        }
+
+} 
 

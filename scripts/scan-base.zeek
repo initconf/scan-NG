@@ -2,13 +2,16 @@ module Scan;
 
 
 export {
-	
+
+
+	redef Config::config_files += { "/feeds/zeek-FP/Scan::scan-config.zeek" };
+
 	global Scan::add_to_known_scanners: function(orig: addr, detect: string); 
 
 	global Scan::enable_scan_summary = T &redef ; 
 	global Scan::use_catch_n_release = T &redef ; 
 
-	global enable_big_tables = F &redef ; 
+	global enable_big_tables = T &redef ; 
 
 	 redef enum Notice::Type += {
                 PasswordGuessing, 	# source tried many user/password combinations
@@ -19,7 +22,7 @@ export {
         type scan_info : record {
                         scanner: addr &log ;
                         status: bool &default=F ;
-                        ###sport: port &log &optional ;
+                        #sport: port &log &optional ;
                         detection: string &log &optional &default="" ;
 			detect_ts: time &default=double_to_time(0.0) ; 
                         event_peer: string &log &optional ;
@@ -43,8 +46,8 @@ export {
                                 &expire_func=known_scanners_inactive ; 
 @endif 
 
-	### workers will keep known_scanners until manager sends m_w_remove_scanner event 
-	### when manager calls known_scanners_inactive event 
+	# workers will keep known_scanners until manager sends m_w_remove_scanner event 
+	# when manager calls known_scanners_inactive event 
 
 @if ( Cluster::is_enabled() && Cluster::local_node_type() != Cluster::MANAGER)
 
@@ -57,7 +60,7 @@ export {
 	} ; 
 
 
-	#### used to identify when a scan started and how many hosts touched before detection 
+	# used to identify when a scan started and how many hosts touched before detection 
 	type start_ts: record { 
 		ts: time &default=double_to_time(0.0); 
 		conn_count: count &default=0 ; 
@@ -107,7 +110,7 @@ export {
 
 	global is_catch_release_active: function(ip: addr): bool;
 
-}  #### end of export 
+}  # end of export 
 
 
 export {
@@ -148,18 +151,18 @@ event zeek_init()
 
 
 
-## Checks if a perticular connection is already blocked and managed by netcontrol
-## and catch-and-release. If yes, we don't process this connection any-further in the
-## scan-detection module
-##
-## ip: addr - ip address which needs to be checked 
-##
-## Returns: bool - returns T or F depending if IP is managed by :bro:see:`NetControl::get_catch_release_info`
+# Checks if a perticular connection is already blocked and managed by netcontrol
+# and catch-and-release. If yes, we don't process this connection any-further in the
+# scan-detection module
+#
+# ip: addr - ip address which needs to be checked 
+#
+# Returns: bool - returns T or F depending if IP is managed by :bro:see:`NetControl::get_catch_release_info`
 
 function is_catch_release_active(ip: addr): bool
 {
-        if (gather_statistics)
-                s_counters$is_catch_release_active += 1;
+        #if (gather_statistics)
+        #        s_counters$is_catch_release_active += 1;
 
 
 @ifdef (NetControl::BlockInfo)
@@ -169,12 +172,12 @@ function is_catch_release_active(ip: addr): bool
         bi = NetControl::get_catch_release_info(orig);
 
         #log_reporter(fmt("is_catch_release_active: blockinfo is %s, %s", cid, bi),0);
-        ### if record bi is initialized
+        # if record bi is initialized
         if (bi$watch_until != 0.0 )
                 return  T;
 
-        ### means empty bi
-        ### [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
+        # means empty bi
+        # [block_until=<uninitialized>, watch_until=0.0, num_reblocked=0, current_interval=0, current_block_id=]
 
 @endif
 
@@ -193,21 +196,36 @@ function dont_drop(a: addr) : bool
 function is_darknet(ip: addr): bool
 {
 
-        ##### TODO: find a better place for this check
-        #### since is_darknet will run for every c, we want it to be slim
+	if (Site::SubnetCountToActivteLandMine != |Site::subnet_table|)
+	{ 
+		# print fmt ("Darknet not active yet: %s", ip); 
+		# if (Site::is_local_addr(ip) && ip !in Site::subnet_table)
+		#	print fmt ("ip is flagged as darknet IP: %s", ip); 
+		return F ; 
+	} 
 
-#       if (|Site::subnet_table| == 0)
-#       {
-#               # since subnet table is zero size we poulate with local_nets
-#               # by putting fake record for each local_nets
-#
-#               for (nets in Site::local_nets)
-#               {
-#                       Site:subnet_table[nets] = {nets, "0.0.0.0", "Site", "Filling the empty subnet table"};
-#               }
-#
-#               return F ;
-#       }
+
+	if ( Site::is_local_addr(ip) && ip in Site::allocated_cache) 
+	{ 
+		log_reporter (fmt ("%s is still in allocated_cache: %s", ip, Site::allocated_cache[ip]),10) ; 
+		return F ; 
+	} 
+
+        # TODO: find a better place for this check
+        # since is_darknet will run for every c, we want it to be slim
+
+	#       if (|Site::subnet_table| == 0)
+	#      	 {
+	#               # since subnet table is zero size we poulate with local_nets
+	#               # by putting fake record for each local_nets
+	#
+	#               for (nets in Site::local_nets)
+	#               {
+	#                       Site:subnet_table[nets] = {nets, "0.0.0.0", "Site", "Filling the empty subnet table"};
+	#               }
+	#
+	#               return F ;
+	#       }
 
         if (Site::is_local_addr(ip) && ip !in Site::subnet_table)
                 return T;
@@ -216,20 +234,20 @@ function is_darknet(ip: addr): bool
 
 }
 
-###### action to take when scanner is expiring 
+# action to take when scanner is expiring 
 
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || ! Cluster::is_enabled())
 function known_scanners_inactive(t: table[addr] of scan_info, idx: addr): interval
 {
 	#log_reporter(fmt("known_scanners_inactive: %s", t[idx]),0); 
 	
-	### sending message to all workers to delete this scanner 
-	### since its inactive now 
+	# sending message to all workers to delete this scanner 
+	# since its inactive now 
 
 	event Scan::m_w_remove_scanner(idx); 
 	schedule 30 secs { Scan::finish_scan_summary(idx) } ; 
 
-	### delete from the manager too 
+	# delete from the manager too 
 
 	return 0 secs ; 
 } 
@@ -250,7 +268,7 @@ function clear_addr(a: addr)
 	#if (a in known_scanners)
 	#{
 		#Scan::log_reporter(fmt ("deleted: known_scanner: %s, %s", a, Scan::known_scanners[a]),1);
-		##event Scan::w_m_update_known_scan_stats(a, known_scanners[a]);
+		#event Scan::w_m_update_known_scan_stats(a, known_scanners[a]);
 		#delete known_scanners[a]; 
 	#}
 

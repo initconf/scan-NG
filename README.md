@@ -1,7 +1,6 @@
 # scan-NG
 
-now works with zeek-3.x.x 
-
+Now works with zeek-3.x.x 
 
 to load in your local.zeek (or site.zeek) policy
 

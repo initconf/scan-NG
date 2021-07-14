@@ -235,7 +235,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 	if (Scan::known_scanners[orig]$status) 
 		return; 
 
-###############################
+
 
 
 	# Coarse search for port-scanning candidates: those that have made
@@ -271,7 +271,7 @@ function check_PortScan(c: connection, established: bool, reverse: bool)
 		local thresh_result = check_portscan_thresh(orig, service, resp); 
 	}
 
-###############################
+
 @if ( Cluster::is_enabled())
 	local _msg = fmt (" add_to_likely_scanner: calling w_m_portscan_new for %s, %s, %s", orig, service, resp);
 	log_reporter(_msg, 0); 
@@ -371,7 +371,7 @@ event Scan::m_w_portscan_update_known_scanners(orig: addr)
 
 
 
-### events for scan detections
+# events for scan detections
 
 #event connection_established(c: connection)
 #        {

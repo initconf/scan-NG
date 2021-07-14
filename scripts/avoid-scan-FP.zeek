@@ -2,7 +2,9 @@ module History;
 
 export {
 
-	global institutional_servers: set[addr] = { } &redef ; 
+	global institutional_servers: set[addr] = { 
+
+						};
 } 
 
 event connection_established (c: connection)

@@ -1,20 +1,20 @@
-### module to build network profile for scan detection 
-### this module builds the 'ground-truth' ie prepares the list 
-### legit LBNL servers and ports based on incoming SF.
-### premise: if external IP connecting to something not in this list
-### is likely a scan if (1) incoming connections meet fanout criteria 
+# module to build network profile for scan detection 
+# this module builds the 'ground-truth' ie prepares the list 
+# legit LBNL servers and ports based on incoming SF.
+# premise: if external IP connecting to something not in this list
+# is likely a scan if (1) incoming connections meet fanout criteria 
 
-### basically, the script works like this: 
-### src: knock .
-### src: knock ..	
-### src: knock ...
-### bro: bye-bye !!! 
+# basically, the script works like this: 
+# src: knock .
+# src: knock ..	
+# src: knock ...
+# bro: bye-bye !!! 
 
-### todo: 
-### a. need backscatter identification (same src port diff dst port for scanner
-### b. address 80/tcp, 443/tcp, 861/tcp, 389/tcp (sticky config)  - knock_high_threshold_ports 
-### c. GeoIP integration - different treatment to > 130 miles IP vs US IPs vs Non-US IPs
-### d. False +ve suppression and statistics _
+# todo: 
+# a. need backscatter identification (same src port diff dst port for scanner
+# b. address 80/tcp, 443/tcp, 861/tcp, 389/tcp (sticky config)  - knock_high_threshold_ports 
+# c. GeoIP integration - different treatment to > 130 miles IP vs US IPs vs Non-US IPs
+# d. False +ve suppression and statistics _
 
 
 module Scan;
@@ -34,9 +34,9 @@ export {
 	       };
 
 	# sensitive and sticky config ports
-	       global knock_high_threshold_ports: set[port] = { 861/tcp, 80/tcp, 443/tcp, 8443/tcp, 8080/tcp } &redef ;
+	       option knock_high_threshold_ports: set[port] = { 861/tcp, 80/tcp, 443/tcp, 8443/tcp, 8080/tcp } &redef ;
 
-	       global knock_medium_threshold_ports: set[port] = { 	17500/tcp,  # dropbox-lan-sync
+	       option knock_medium_threshold_ports: set[port] = { 	17500/tcp,  # dropbox-lan-sync
 	                                                   		135/tcp, 139/tcp, 445/tcp,
 	                                                      		 0/tcp, 389/tcp, 88/tcp,
 	                                                      		 3268/tcp, 52311/tcp,
@@ -49,8 +49,10 @@ export {
 	       #                                8194/tcp, 8443/tcp, 88/tcp, 9001/tcp,
 	       #                                };
 
-	# scan candidate 
-	global likely_scanner: table[addr,port] of set[addr] &read_expire=1 day ; ### &synchronized ; 
+	# scan candidate
+	global expire_likely_scanner: function(t: table[addr, port] of set[addr], a: addr, p: port): interval ;  
+	global likely_scanner: table[addr,port] of set[addr]=table()  &create_expire=1 day
+							&expire_func=expire_likely_scanner ; 
 	
 	global c_likely_scanner: table[addr,port] of opaque of cardinality
 	               &default = function(a:addr, p:port): opaque of cardinality { return hll_cardinality_init(0.1, 0.99); }
@@ -63,23 +65,23 @@ export {
 	global COMMUTE_DISTANCE = 320 &redef ; 
 
 	# automated_exceptions using input-framework
-	global knock_exceptions_file  = "/YURT/feeds/BRO-feeds/knockknock.exceptions" &redef ;
+	global ipportexclude_file  = "/feeds/BRO-feeds/knockknock.exceptions" &redef ;
 
-	type knock_exceptions_Idx: record {
+	type ipportexclude_Idx: record {
 		exclude_ip: addr;
 	       	exclude_port: port &type_column="t";
 	};
 	
-	type knock_exceptions_Val: record {
+	type ipportexclude_Val: record {
 		exclude_ip: addr;
 	       	exclude_port: port &type_column="t" ;
 	       	comment: string &optional ;
 	} ;
 
-	global knock_exceptions: table[addr, port] of knock_exceptions_Val = table() &redef  ; ### &synchronized ;
-	#global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; #### &synchronized ; 
+	global ipportexclude: table[addr, port] of ipportexclude_Val = table() &redef  ; # &synchronized ;
+	#global concurrent_scanners_per_port: table[port] of set[addr] &write_expire=6 hrs ; # &synchronized ; 
 	
-	### clusterization helper events 
+	# clusterization helper events 
 	global m_w_knockscan_add: event (orig: addr, d_port: port,  resp: addr);
 	global w_m_knockscan_new: event (orig: addr, d_port: port,  resp: addr);
 	global add_to_knockknock_cache: function(orig: addr, d_port: port,  resp: addr);
@@ -90,9 +92,18 @@ export {
 	global filterate_KnockKnockScan: function (c: connection, darknet: bool ): string ; 
 }
 
+	
+function expire_likely_scanner(t: table[addr, port] of set[addr], a: addr, p: port): interval 
+{ 
+	log_reporter(fmt("expire_likely_scanner: %s, %s, %s", a, p, t[a,p]),25); 
+	return 0 secs ; 
+} 
+
+
 
 function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool 
 {
+
 	if (gather_statistics)
 		s_counters$c_knock_core += 1  ; 
 
@@ -156,7 +167,13 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 
 	if (orig !in Scan::known_scanners)
        	{
-		local d_val = double_to_count(hll_cardinality_estimate(c_likely_scanner[orig,d_port])) ; 
+		local d_val = 0 ; 
+		if  (enable_big_tables) { 
+			d_val = |likely_scanner[orig, d_port]|; 
+		} 
+		else { 
+			d_val = double_to_count(hll_cardinality_estimate(c_likely_scanner[orig,d_port])) ; 
+		} 
 
 	       	if (d_val == HIGH_THRESHOLD_LIMIT && high_threshold_flag )
 		{
@@ -185,16 +202,8 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		#log_reporter (fmt ("NOTICE: FOUND KnockKnockScan: %s", orig),0);
 
 	} 
-
 	return result ; 
 } 
-
-
-#check_knockknock_scan: 222.85.138.75, 3128/tcp, 131.243.192.47, 1463019177.63643, 1463019216.164206 - DETECTED
-#1463019177.636430 error in ./.././check-knock.bro, line 199: value used but not set (Scan::add_to_known_scanners)
-#1463019177.636430 error in ./.././check-knock.bro, line 250: no such index (Scan::known_scanners[Scan::orig])
-#1463019177.636430 error in ./.././check-knock.bro, line 251: no such index (Scan::known_scanners[Scan::orig])
-
 
 function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): bool 
 {
@@ -203,7 +212,7 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 	if (gather_statistics)	
 		s_counters$c_knock_checkscan += 1; 
 
-	## already filterated connection 
+	# already filterated connection 
 	local orig = cid$orig_h ;
 	local resp = cid$resp_h ;
 	local d_port = cid$resp_p; 
@@ -232,7 +241,8 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 			add likely_scanner[orig,d_port][resp];
 		} 
 	} 
-
+	else 
+	{ 
 	if ([orig, d_port] !in c_likely_scanner)
 	{
 		local cp: opaque of cardinality = hll_cardinality_init(0.1, 0.99); 
@@ -240,6 +250,7 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 	} 
 	
 	hll_cardinality_add(c_likely_scanner[orig,d_port], resp);	
+	} 
 
 	result = check_knockknock_scan(orig, d_port, resp); 
 
@@ -250,7 +261,7 @@ function check_KnockKnockScan(cid: conn_id, established: bool, reverse: bool ): 
 event connection_state_remove(c: connection) 
 {
 	local darknet = F; 
-####	check_KnockKnockScan(c$id, F, F) ; 
+#	check_KnockKnockScan(c$id, F, F) ; 
 }
 @endif 
 
@@ -273,7 +284,7 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 	       if (Site::is_local_addr(c$id$orig_h))
 	               return "";
 
-	###local darknet = Scan::is_darknet(c$id$resp_h); 
+	#local darknet = Scan::is_darknet(c$id$resp_h); 
 
 	if (! darknet ) 
 	{ 
@@ -303,8 +314,8 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 	} 
 	
 	# ignore traffic to host/port  this is primarily whitelisting 
-	# maintained in knock_exceptions_file for sticky config firewalled hosts 
-	if ([resp, d_port] in knock_exceptions) 
+	# maintained in ipportexclude_file for sticky config firewalled hosts 
+	if ([resp, d_port] in ipportexclude) 
 	{	return "";  } 
 
 	# if ever a SF a LBL host on this port - ignore the orig completely 
@@ -328,7 +339,7 @@ function filterate_KnockKnockScan(c: connection, darknet: bool ): string
 event zeek_init()
 {
 
-Input::add_table([$source=knock_exceptions_file, $name="knock_exceptions", $idx=knock_exceptions_Idx, $val=knock_exceptions_Val,  $destination=knock_exceptions, $mode=Input::REREAD ]);
+Input::add_table([$source=ipportexclude_file, $name="ipportexclude", $idx=ipportexclude_Idx, $val=ipportexclude_Val,  $destination=ipportexclude, $mode=Input::REREAD ]);
 
 } 
 

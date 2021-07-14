@@ -133,7 +133,7 @@ event Site::m_w_add_host_profiles(cid: conn_id)
         local resp = cid$resp_h ;
         local d_port = cid$resp_p;
 
-	###Scan::log_reporter(fmt ("m_w_add_host_profiles: %s", cid));
+	#Scan::log_reporter(fmt ("m_w_add_host_profiles: %s", cid));
 
 	if (resp !in host_profiles)
 		host_profiles[resp]=set();
@@ -153,7 +153,7 @@ event connection_established(c: connection)
         local resp = c$id$resp_h ;
         local d_port = c$id$resp_p ;
 
-        ### if outgoing traffic, exit
+        # if outgoing traffic, exit
         if (Site::is_local_addr(resp))
 	{ 
 		add_to_host_profile_cache(c$id); 

@@ -77,24 +77,24 @@ function reset_counters()
                 s_counters$check_scan_cache  = 0 ;
 
 
-                ### since these are manager counters we don't zero these
-                ### s_counters$worker_to_manager_counter  = 0 ;
-                ### s_counters$run_scan_detection  = 0 ;
-                ### s_counters$c_knock_checkscan  = 0 ;
-                ### s_counters$c_knock_core  = 0 ;
-                ### s_counters$c_land_checkscan  = 0 ;
-                ### s_counters$c_land_core  = 0 ;
-                ### s_counters$c_backscat_checkscan  = 0 ;
-                ### s_counters$c_backscat_core  = 0 ;
-                ### s_counters$c_addressscan_checkscan  = 0 ;
-                ### s_counters$c_addressscan_core  = 0 ;
+                # since these are manager counters we don't zero these
+                # s_counters$worker_to_manager_counter  = 0 ;
+                # s_counters$run_scan_detection  = 0 ;
+                # s_counters$c_knock_checkscan  = 0 ;
+                # s_counters$c_knock_core  = 0 ;
+                # s_counters$c_land_checkscan  = 0 ;
+                # s_counters$c_land_core  = 0 ;
+                # s_counters$c_backscat_checkscan  = 0 ;
+                # s_counters$c_backscat_core  = 0 ;
+                # s_counters$c_addressscan_checkscan  = 0 ;
+                # s_counters$c_addressscan_core  = 0 ;
 
 } 
 
 @if (( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::MANAGER ) || (! Cluster::is_enabled()) )
 event dump_stats()
 {
-	log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
+	#log_reporter(fmt ("dump_stats calling send_perf_counters: %s", s_counters ),0); 
 	event Scan::m_w_send_performance_counters(T); 
 
 	schedule stat_freq { dump_stats() }; 	
@@ -154,12 +154,12 @@ event Scan::m_w_send_performance_counters(send: bool)
 event Scan::w_m_update_performance_counters(sc: scan_counters)
 {
 
-	log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
+	#log_reporter(fmt ("inside w_m_update_performance_counters : %s", sc),0); 
 #	log_reporter(fmt("Got counters: %s", sc),2); 
 
 	
 
-	######### aggregate the numbers now 
+	# aggregate the numbers now 
 		s_counters$new_conn_counter += sc$new_conn_counter ; 
 		s_counters$is_catch_release_active += sc$is_catch_release_active ; 
 		s_counters$known_scanners_counter += sc$known_scanners_counter ; 
@@ -196,29 +196,32 @@ event Scan::w_m_update_performance_counters(sc: scan_counters)
 	if (|aggregate_workers| == Cluster::worker_count ) 
 	{
 		log_reporter(fmt("STATISTICS: %s", s_counters),0); 
-	
-		### reset the worker reporting table again 
-		for (w in aggregate_workers) 
-			delete aggregate_workers[w] ; 
-		
-		### since these are manager counters we don't zero these 
-		### s_counters$worker_to_manager_counter  = 0 ; 
-		### s_counters$run_scan_detection  = 0 ; 
-                ### s_counters$c_knock_checkscan  = 0 ; 
-                ### s_counters$c_knock_core  = 0 ; 
-                ### s_counters$c_land_checkscan  = 0 ; 
-                ### s_counters$c_land_core  = 0 ; 
-                ### s_counters$c_backscat_checkscan  = 0 ; 
-                ### s_counters$c_backscat_core  = 0 ; 
-                ### s_counters$c_addressscan_checkscan  = 0 ; 
-                ### s_counters$c_addressscan_core  = 0 ; 
 
-		### reset worker counts 
+		# reset the worker reporting table again 
+		# FIX ME  - this will crash
+                #for (w in aggregate_workers)
+                        #delete aggregate_workers[w] ;
+
+		clear_table(aggregate_workers); 
+	
+		# since these are manager counters we don't zero these 
+		# s_counters$worker_to_manager_counter  = 0 ; 
+		# s_counters$run_scan_detection  = 0 ; 
+                # s_counters$c_knock_checkscan  = 0 ; 
+                # s_counters$c_knock_core  = 0 ; 
+                # s_counters$c_land_checkscan  = 0 ; 
+                # s_counters$c_land_core  = 0 ; 
+                # s_counters$c_backscat_checkscan  = 0 ; 
+                # s_counters$c_backscat_core  = 0 ; 
+                # s_counters$c_addressscan_checkscan  = 0 ; 
+                # s_counters$c_addressscan_core  = 0 ; 
+
+		# reset worker counts 
 		worker_count = 0 ; 
 
 	} 
 
-#	log_reporter(fmt ("II + inside w_m_update_performance_counters : %s", sc),0); 
+#	#log_reporter(fmt ("II + inside w_m_update_performance_counters : %s", sc),0); 
 } 
 
 @endif 

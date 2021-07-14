@@ -19,9 +19,9 @@ export {
 
 	const read_files: set[string] = {} &redef;
 
-	global whitelist_ip_file:  string = "/YURT/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
-	global whitelist_subnet_file:  string = "/YURT/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
-	global blacklist_feeds: string =  "/YURT/feeds/BRO-feeds/blacklist.scan"  &redef ; 
+	global whitelist_ip_file:  string = "/feeds/BRO-feeds/ip-whitelist.scan" &redef ; 
+	global whitelist_subnet_file:  string = "/feeds/BRO-feeds/subnet-whitelist.scan" &redef ; 
+	global blacklist_feeds: string =  "/feeds/BRO-feeds/blacklist.scan"  &redef ; 
 
         redef enum Notice::Type += {
                 Whitelist, 
@@ -98,7 +98,7 @@ event reporter_error(t: time , msg: string , location: string )
 	if (/whitelist.scan/ in msg)
 	{ 
 		print fmt ("bakwas error: %s, %s, %s", t, msg, location); 
-		### generate a notice 
+		# generate a notice 
 	} 
 } 
 	
@@ -125,7 +125,7 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
 		if (PURGE_ON_WHITELIST && is_catch_release_active(ip))
 		{
                         _msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]);
-                        delete known_scanners[ip] ;
+                        #delete known_scanners[ip] ;
 
                         @ifdef (NetControl::unblock_address_catch_release)
                                 if (NetControl::unblock_address_catch_release(ip, _msg))
@@ -157,8 +157,6 @@ event read_whitelist_ip(description: Input::TableDescription, tpe: Input::Event,
 
         if (tpe == Input::EVENT_REMOVED ) {
                 #log_reporter(fmt (" scan-inputs.bro : REMOVED IP %s", ip), 0);
-
-		delete whitelist_ip_table[ip]; 
 
 		_msg = fmt("%s: %s", ip, comment);
                 NOTICE([$note=WhitelistRemoved, $src=ip, $msg=fmt("%s", _msg)]);
@@ -223,7 +221,6 @@ event read_whitelist_subnet(description: Input::TableDescription, tpe: Input::Ev
 
         if (tpe == Input::EVENT_REMOVED) {
                 #log_reporter(fmt (" scan-inputs.bro : REMOVED Subnet  %s", nets),0 );
-		delete whitelist_subnet_table[nets]; 
 
 		_msg = fmt("%s: %s", nets, comment);
 		NOTICE([$note=WhitelistRemoved, $msg=fmt("%s", _msg)]);
@@ -262,7 +259,7 @@ event Scan::m_w_add_ip(ip: addr, comment: string)
 		if (PURGE_ON_WHITELIST && is_catch_release_active(ip))
 		{ 
 			_msg = fmt("%s is removed from known_scanners after whitelist: %s", ip, known_scanners[ip]); 
-			delete known_scanners[ip] ; 
+			#delete known_scanners[ip] ; 
 
 			@ifdef (NetControl::unblock_address_catch_release) 
 				if (NetControl::unblock_address_catch_release(ip, _msg))
@@ -282,7 +279,7 @@ whitelist_ip_table[ip]$comment= comment;
 event Scan::m_w_remove_ip(ip: addr, comment: string)
 {
 #log_reporter(fmt ("scan-inputs.bro: m_w_remove_ip: %s, %s", ip, comment), 0);
-delete whitelist_ip_table[ip]; 
+	delete whitelist_ip_table[ip]; 
 }
 
 
@@ -308,7 +305,8 @@ event Scan::m_w_add_subnet(nets: subnet, comment: string)
 				local _msg = fmt("%s is removed from known_scanners after %s whitelist: %s", ip, nets, known_scanners[ip]);
 
 				NOTICE([$note=PurgeOnWhitelist, $src=ip, $msg=fmt("%s", _msg)]);
-				delete known_scanners[ip] ;
+				# ASH: FIXME : cannot delete inside a for loop 
+				# delete known_scanners[ip] ;
 
 				@ifdef (NetControl::unblock_address_catch_release) 
 					NetControl::unblock_address_catch_release(ip, _msg);

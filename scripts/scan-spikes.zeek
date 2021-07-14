@@ -1,7 +1,7 @@
-## This policy tries to identify #of uniq scanners for a given port
-## and if #scanners for a port crosses a threshold, it generates a notice
-## basically, we want to find sudden spikes in scanning
-## esp with botnets such as mirai etc. 
+# This policy tries to identify #of uniq scanners for a given port
+# and if #scanners for a port crosses a threshold, it generates a notice
+# basically, we want to find sudden spikes in scanning
+# esp with botnets such as mirai etc. 
 
 module Scan ;
 
@@ -20,7 +20,7 @@ export {
 
 function check_scanners_threshold (v: vector of count, idx: table[port] of count, service: port, n: count):bool
 {
- print fmt ("service: %s and IDX_service: %s and n is: %s and v[idx[service]] is: %s", service, idx[service], n, v[idx[service]]);
+#print fmt ("service: %s and IDX_service: %s and n is: %s and v[idx[service]] is: %s", service, idx[service], n, v[idx[service]]);
 
          if ( idx[service] < |v| && n >= v[idx[service]] )
                 {
@@ -46,8 +46,6 @@ function check_port_spikes(orig: addr, service: port)
 	if (orig !in port_spikes[service])
 		add port_spikes[service] [orig] ; 
 	
-	print fmt ("%s", port_spikes); 
-
 	local t = check_scanners_threshold(uniq_scanners_on_port_threshold, port_spike_idx, service, |port_spikes[service]|); 
 	if (t)
 	{ 

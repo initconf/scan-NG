@@ -10,7 +10,7 @@ export {
 	}; 
 
 	global portexclude_file = "" &redef ;
-	redef portexclude_file = "/YURT/feeds/BRO-feeds/scan-portexclude" ; 
+	redef portexclude_file = "/feeds/BRO-feeds/scan-portexclude" ; 
 
         type Idx: record {
                 skip_port : port &type_column="t";

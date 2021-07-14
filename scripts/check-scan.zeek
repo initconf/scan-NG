@@ -1,5 +1,5 @@
-### this is the core module which integrates and enables and disables 
-### all the scan-detection suite 
+# this is the core module which integrates and enables and disables 
+# all the scan-detection suite 
 
 module Scan;
 
@@ -21,11 +21,11 @@ event zeek_init()
 }	
 
 
-## Checks if an IP qualies the criteria of being a NOT scanner 
-## 
-## cid: connection record 
-##
-## Returns: bool - T/F depending on various conditions satisfied internally 
+# Checks if an IP qualies the criteria of being a NOT scanner 
+# 
+# cid: connection record 
+#
+# Returns: bool - T/F depending on various conditions satisfied internally 
 function not_scanner(cid: conn_id): bool 
 {
 	local orig = cid$orig_h ; 
@@ -65,7 +65,7 @@ function not_scanner(cid: conn_id): bool
         if (orig in Scan::whitelist_subnet_table)
                 return T ;
 	
-	# ignore scan sources 
+	# ignore scan sources (ex: cloud.lbl.gov)
 	if (orig in skip_scan_sources)
 	{       return  T ; }
 
@@ -99,38 +99,37 @@ function not_scanner(cid: conn_id): bool
 	#	return T; 
 
 	# ignore traffic to host/port  this is primarily whitelisting
-        # maintained in knock_exceptions_file for sticky config firewalled hosts
-        if (resp in Site::local_nets && [resp, service] in knock_exceptions)
+        # maintained in ipportexclude_file for sticky config firewalled hosts
+        if (resp in Site::local_nets && [resp, service] in ipportexclude)
         {       return T;  }
 
 
 	return result ; 
 } 
 
-## Primary entry point of :bro:see:`Scan::check_scan` modoule 
-## It is called by :bro:see:`new_connection`, :bro:see:`connection_state_remove`, :bro:see:`connection_established`
-## :bro:see:`connection_attempt`, :bro:see:`connection_rejected`, :bro:see:`partial_connection`, :bro:see:`connection_half_finished`, 
-## :bro:see:`connection_reset`, :bro:see:`connection_pending` events
-## 
-## c: connection_record :see:bro:`connection` 
-## 
-## established: bool - if a connection between endpoints is established 
-##
-## reverse: bool - if connection is from setup from destination to source instead 
+# Primary entry point of :bro:see:`Scan::check_scan` modoule 
+# It is called by :bro:see:`new_connection`, :bro:see:`connection_state_remove`, :bro:see:`connection_established`
+# :bro:see:`connection_attempt`, :bro:see:`connection_rejected`, :bro:see:`partial_connection`, :bro:see:`connection_half_finished`, 
+# :bro:see:`connection_reset`, :bro:see:`connection_pending` events
+# 
+# c: connection_record :see:bro:`connection` 
+# 
+# established: bool - if a connection between endpoints is established 
+#
+# reverse: bool - if connection is from setup from destination to source instead 
 function check_scan(c: connection, established: bool, reverse: bool)
 {
 
 	local orig=c$id$orig_h ; 
 
-	### already a known_scanner 
+	# already a known_scanner 
 	if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
 	{ 
+		#print fmt ("Known_scanner: %s", c$id); 
 		if (gather_statistics)
                         s_counters$already_scanner_counter += 1;
 		return ; 
 	} 
-
-
 
 	if (not_scanner(c$id))
 	{ 
@@ -144,9 +143,9 @@ function check_scan(c: connection, established: bool, reverse: bool)
 
        	local resp = c$id$resp_h ;
 
-	### if darknet then fast-pace the detection for landmine, knockknoc and
-	### backscatter so that we don't ahve to wait till tcp_attempt_delay expiration 
-	### of 5 sec 
+	# if darknet then fast-pace the detection for landmine, knockknoc and
+	# backscatter so that we don't ahve to wait till tcp_attempt_delay expiration 
+	# of 5 sec 
 
 	local darknet = F ; 
 
@@ -159,11 +158,11 @@ function check_scan(c: connection, established: bool, reverse: bool)
                         s_counters$darknet_counter += 1;
 
 	} 
-        ### only watch for live subnets - since conn_state_remove adds
-        ### 5.0 sec of latency to tcp_attempt_delay
-        ### Unsuccessful is defined as at least tcp_attempt_delay seconds
-        ### having elapsed since the originator first sent a connection
-        ### establishment packet to the destination without seeing a reply.
+        # only watch for live subnets - since conn_state_remove adds
+        # 5.0 sec of latency to tcp_attempt_delay
+        # Unsuccessful is defined as at least tcp_attempt_delay seconds
+        # having elapsed since the originator first sent a connection
+        # establishment packet to the destination without seeing a reply.
 
 	else if (Site::is_local_addr(resp) && resp in Site::subnet_table)
 	{ 
@@ -211,18 +210,17 @@ function check_scan(c: connection, established: bool, reverse: bool)
 	# if (activate_PortScan)
   	#	filter__PortScan = Scan::filterate_PortScan(c, established, reverse) ; 
 
-
 	if (/K/ in filter__KnockKnock || /L/ in filter__LandMine || /B/ in filter__Backscatter  || /A/ in filter__AddressScan || /T/ in filter__LowPortTroll)  
 	{ 
-		#### So connection met one or more of heuristic filteration criterias 
-		#### send for further determination into check-scan-impl.bro now 
+		# So connection met one or more of heuristic filteration criterias 
+		# send for further determination into check-scan-impl.bro now 
 	
 		if (gather_statistics)
 			s_counters$filteration_success += 1;
 
-		### we maintain a uid_table with create_expire of 30 secs so that same connection processed by one event 
-		### is not again sent - for example if C is already processed in scan-engine for new_connection, lets not 
-		### process same C for subsiquent TCP events such as conn_terminate or conn_rejected etc. 
+		# we maintain a uid_table with create_expire of 30 secs so that same connection processed by one event 
+		# is not again sent - for example if C is already processed in scan-engine for new_connection, lets not 
+		# process same C for subsiquent TCP events such as conn_terminate or conn_rejected etc. 
 		if (c$uid !in uid_table)
 		{ 
 			local filterator = fmt("%s%s%s%s%s%s", filter__KnockKnock, filter__LandMine, filter__Backscatter, filter__AddressScan, filter__PortScan,filter__LowPortTroll); 
@@ -234,12 +232,12 @@ function check_scan(c: connection, established: bool, reverse: bool)
 } 
 
 
-### speed up landmine and knockknock for darknet space 
+# speed up landmine and knockknock for darknet space 
 event new_connection(c: connection)
 {
 	#print fmt ("new_connection"); 
-	### for new connections we just want to supply C and only for darknet spaces 
-	### to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
+	# for new connections we just want to supply C and only for darknet spaces 
+	# to speed up reaction time and to avoind tcp_expire_delays of 5.0 sec  
 
 	# only external IPs 
 	if (c$id$orig_h in Site::local_nets)
@@ -259,7 +257,7 @@ event new_connection(c: connection)
 
          local tp = get_port_transport_proto(c$id$resp_p);
         
-	if (tp == tcp && c$id$orig_h !in Site::local_nets && is_darknet(c$id$resp_h) )
+	if ((tp == tcp || tp == udp) && c$id$orig_h !in Site::local_nets && is_darknet(c$id$resp_h) )
 	{
 		Scan::check_scan(c, F, F); 
 	} 
@@ -425,7 +423,7 @@ event connection_pending(c: connection)
        }
 
 
-#### no need of these ############ TRW Events 
+# no need of these  TRW Events 
 #
 #
 #event connection_established(c: connection)
@@ -452,5 +450,5 @@ event connection_pending(c: connection)
 #        if ( trans == tcp && TRW::use_TRW_algorithm )
 #                TRW::check_TRW_scan(c, conn_state(c, trans), is_reverse_scan);
 #}
-############
+#
 

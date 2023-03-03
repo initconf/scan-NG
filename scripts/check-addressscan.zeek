@@ -261,6 +261,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 	# log_reporter(fmt("add_to_addressscan_cache: check_AddressScan: %s", c$id),0); 
 
 	local resp_count = double_to_count(hll_cardinality_estimate(c_distinct_peers[orig])) ;
+	local address_scan_result = F;
 
 	if ( (! established ) &&
 		# not established, service not expressly allowed
@@ -281,7 +282,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 
 				local n = |distinct_peers[orig]|;
 
-				local address_scan_result = check_address_scan_thresholds(orig, resp, outbound, n); 	
+				address_scan_result = check_address_scan_thresholds(orig, resp, outbound, n); 	
 			
 				if (address_scan_result)
 				{
@@ -309,7 +310,7 @@ function check_AddressScan(cid: conn_id, established: bool, reverse: bool): bool
 
 		hll_cardinality_add(c_distinct_peers[orig], resp);
 	
-		 local d_val = double_to_count(hll_cardinality_estimate(c_distinct_peers[orig])) ;
+		local d_val = double_to_count(hll_cardinality_estimate(c_distinct_peers[orig])) ;
 				
 		address_scan_result = check_address_scan_thresholds(orig, resp, outbound, d_val); 	
 

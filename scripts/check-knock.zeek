@@ -108,6 +108,7 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		s_counters$c_knock_core += 1  ; 
 
 	local result = F ; 
+	local _msg="";
 	
 	local high_threshold_flag=F ;
 	local medium_threshold_flag=F; 
@@ -164,10 +165,10 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 	       {       medium_threshold_flag = T ;  }
 	} 
 
+	local d_val = 0 ; 
 
 	if (orig !in Scan::known_scanners)
        	{
-		local d_val = 0 ; 
 		if  (enable_big_tables) { 
 			d_val = |likely_scanner[orig, d_port]|; 
 		} 
@@ -195,7 +196,7 @@ function check_knockknock_scan(orig: addr, d_port: port, resp: addr): bool
 		local cc =  orig_loc?$country_code ? orig_loc$country_code : "" ;
 
 		#local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, |concurrent_scanners_per_port[d_port]|, cc, distance);
-		local _msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, flux_density, cc, distance);
+		_msg = fmt("%s scanned a total of %d hosts: [%s] (port-flux-density: %s) (origin: %s distance: %.2f miles)", orig, d_val,d_port, flux_density, cc, distance);
 
 		#$ts=current_time(), 
 		NOTICE([$note=KnockKnockScan, $src=orig, $p=d_port, $msg=fmt("%s", _msg)]);

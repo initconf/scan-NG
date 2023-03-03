@@ -126,6 +126,9 @@ event read_subnet_feed(description: Input::TableDescription, tpe: Input::Event, 
 
 event Input::end_of_data(name: string, source: string)                                                         
 {                                                                         
+
+	local _msg = "";
+
 	if (source != subnet_feed) 
 		return; 
 
@@ -139,7 +142,7 @@ event Input::end_of_data(name: string, source: string)
 	
 	if (|Site::subnet_table| == 0)
 	{ 
-		local _msg = fmt ("Looks like subnet Table is %s", |Site::subnet_table|) ; 
+		_msg = fmt ("Looks like subnet Table is %s", |Site::subnet_table|) ; 
 
 		for (nets in Site::local_nets)
                 {       #local sv: subnet_Val ;

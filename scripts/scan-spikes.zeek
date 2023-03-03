@@ -39,7 +39,7 @@ function check_port_spikes(orig: addr, service: port)
 
 	if (service !in port_spikes)
 	{ 
-		local a=set(); 
+		local a: set[addr];
 		port_spikes[service] = a ; 
 	} 
 

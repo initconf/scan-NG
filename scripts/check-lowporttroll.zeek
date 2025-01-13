@@ -1,130 +1,128 @@
-module Scan; 
+module Scan;
 
 export {
-
 	const activate_LowPortTrolling = T &redef;
 
 	# Ignore address scanners for further scan detection after
-        # scanning this many hosts.
-        # 0 disables.
-        #const ignore_scanners_threshold = 0 &redef;
+	# scanning this many hosts.
+	# 0 disables.
+	#const ignore_scanners_threshold = 0 &redef;
 
+	redef enum Notice::Type += {
+		LowPortTrolling, # source touched privileged ports
+		LowPortScanSummary, # summary of distinct low ports per scanner
+	};
 
-         redef enum Notice::Type += {
-		LowPortTrolling,        # source touched privileged ports
-                LowPortScanSummary,     # summary of distinct low ports per scanner
-        };
+	global lowport_summary: function(t: table[addr] of set[port], orig: addr)
+	    : interval;
+	global distinct_low_ports: table[addr] of set[port] &read_expire=1 days
+	    &expire_func=lowport_summary &redef;
 
-        global lowport_summary:
-                function(t: table[addr] of set[port], orig: addr): interval;
-	global distinct_low_ports: table[addr] of set[port]
-		&read_expire = 1 days  &expire_func=lowport_summary &redef;
-
-        const lowport_summary_trigger = 10 &redef;
-
+	const lowport_summary_trigger = 10 &redef;
 
 	# Threshold for scanning privileged ports.
 	const priv_scan_trigger = 5 &redef;
 	const troll_skip_service = {
-		25/tcp, 21/tcp, 22/tcp, 20/tcp, 80/tcp, 443/tcp, 
+		25/tcp,
+		21/tcp,
+		22/tcp,
+		20/tcp,
+		80/tcp,
+		443/tcp,
+		2049/tcp,
+		2049/udp,
 	} &redef;
 
-	global filterate_LowPortTroll: function(c: connection, established: bool, reverse: bool): string ; 
-
+	global filterate_LowPortTroll: function(c: connection, established: bool,
+	    reverse: bool): string;
 }
 
 function lowport_summary(t: table[addr] of set[port], orig: addr): interval
-        {
-        local num_distinct_lowports = orig in t ? |t[orig]| : 0;
+{
+	local num_distinct_lowports = orig in t ? |t[orig]| : 0;
 
-        if ( num_distinct_lowports >= lowport_summary_trigger )
-                NOTICE([$note=LowPortScanSummary, $src=orig,
-                        $n=num_distinct_lowports,
-                        $msg=fmt("%s scanned a total of %d low ports",
-                                        orig, num_distinct_lowports)]);
+	if ( num_distinct_lowports >= lowport_summary_trigger )
+		NOTICE([
+		    $note=LowPortScanSummary,
+		    $src=orig,
+		    $n=num_distinct_lowports,
+		    $msg=fmt("%s scanned a total of %d low ports", orig, num_distinct_lowports)]);
 
-        return 0 secs;
-        }
+	return 0 secs;
+}
 
-
-	#orig: addr, service: port, resp: addr): bool 
-function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): bool 
+#orig: addr, service: port, resp: addr): bool 
+function check_LowPortTroll(cid: conn_id, established: bool, reverse: bool): bool
 {
 	local id = cid;
 
-        local service = reverse ? id$orig_p : id$resp_p;
-        local rev_service = reverse ? id$resp_p : id$orig_p;
-        local orig = reverse ? id$resp_h : id$orig_h;
-        local resp = reverse ? id$orig_h : id$resp_h;
-        local outbound = Site::is_local_addr(orig);
-
-
-	local troll = F ;
-	if ( orig !in distinct_low_ports ||
-	     service !in distinct_low_ports[orig] )
-		{
-		if ( orig !in distinct_low_ports )
-			distinct_low_ports[orig] = set() ;
-
-		add distinct_low_ports[orig][service];
-
-		if ( |distinct_low_ports[orig]| == priv_scan_trigger &&
-		     orig !in Site::neighbor_nets )
-			{
-			#local s = service in port_names ? port_names[service] : fmt("%s", service);
-			local s = fmt("%s", service);
-
-
-			local svrc_msg = fmt("low port trolling %s %s", orig, s);
-			NOTICE([$note=LowPortTrolling, $src=orig,
-				$p=service, $msg=svrc_msg]);
-
-			troll = T ; 
-			}
-
-		} 
-
-	return troll; 
-} 
-
-function filterate_LowPortTroll(c: connection, established: bool, reverse: bool): string 
-{
-	if ( established )
-	{
-		# Don't consider established connections for port scanning,
-		# it's too easy to be mislead by FTP-like applications that
-		# legitimately gobble their way through the port space.
-		return "" ; 
-	}
-
-	local id = c$id;
-
-	local service = "ftp-data" in c$service ? 20/tcp
-			: (reverse ? id$orig_p : id$resp_p);
+	local service = reverse ? id$orig_p : id$resp_p;
 	local rev_service = reverse ? id$resp_p : id$orig_p;
 	local orig = reverse ? id$resp_h : id$orig_h;
 	local resp = reverse ? id$orig_h : id$resp_h;
 	local outbound = Site::is_local_addr(orig);
-	
-	if (orig in Scan::known_scanners && Scan::known_scanners[orig]$status) 
-		return "" ; 
-		     
-	if (orig in Site::neighbor_nets )
-		return "" ; 
 
-	# Check for low ports.
-	if ( activate_LowPortTrolling && ! outbound && service < 1024/tcp &&
-	     service !in troll_skip_service )
-	{
-		return "T" ; 
-		# local troll_result = check_lowporttrolling(orig, service, resp); 
+	local troll = F;
+	if ( orig !in distinct_low_ports || service !in distinct_low_ports[orig] ) {
+		if ( orig !in distinct_low_ports )
+			distinct_low_ports[orig] = set();
+
+		add distinct_low_ports[orig][service];
+
+		if ( |distinct_low_ports[orig]| == priv_scan_trigger
+		    && orig !in Site::neighbor_nets ) {
+			#local s = service in port_names ? port_names[service] : fmt("%s", service);
+			local s = fmt("%s", service);
+
+			local svrc_msg = fmt("low port trolling %s %s", orig, s);
+			NOTICE([
+			    $note=LowPortTrolling,
+			    $src=orig,
+			    $p=service,
+			    $msg=svrc_msg]);
+
+			troll = T;
+		}
 	}
 
-	return "" ; 
-} 
+	return troll;
+}
 
+function filterate_LowPortTroll(c: connection, established: bool, reverse: bool): string
+{
+	if ( established ) {
+		# Don't consider established connections for port scanning,
+		# it's too easy to be mislead by FTP-like applications that
+		# legitimately gobble their way through the port space.
+		return "";
+	}
 
+	local id = c$id;
 
+	local service = "ftp-data" in c$service ? 20/tcp : ( reverse ? id$orig_p :
+	    id$resp_p );
+	local rev_service = reverse ? id$resp_p : id$orig_p;
+	local orig = reverse ? id$resp_h : id$orig_h;
+	local resp = reverse ? id$orig_h : id$resp_h;
+	local outbound = Site::is_local_addr(orig);
+
+	if ( orig in Scan::known_scanners && Scan::known_scanners[orig]$status )
+		return "";
+
+	if ( orig in Site::neighbor_nets )
+		return "";
+
+	# Check for low ports.
+	if ( activate_LowPortTrolling
+	    && ! outbound
+	    && service < 1024/tcp
+	    && service !in troll_skip_service ) {
+		return "T";
+	# local troll_result = check_lowporttrolling(orig, service, resp); 
+	}
+
+	return "";
+}
 # events for scan detections
 
 #event connection_established(c: connection)

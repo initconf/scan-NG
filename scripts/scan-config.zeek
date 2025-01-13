@@ -218,11 +218,6 @@ redef Scan::skip_scan_nets += { };
 
 # List of well known local server/ports to exclude for scanning purposes.
 redef Scan::skip_dest_server_ports: set[addr, port] += {
-	[131.243.60.26, 52311/tcp], #bigfix-dmzrelay.lbl.gov
-	[131.243.60.49, 52311/tcp], #bigfix-masterrelay.lbl.gov
-	[128.3.41.23, 52311/tcp], #bigfix-relay1.lbl.gov
-	[131.243.60.51, 52311/tcp], #bigfix-relay2.lbl.gov
-	[128.3.41.87, 52311/tcp], #bigfix.lbl.gov
 };
 
 redef Scan::never_drop_nets += {

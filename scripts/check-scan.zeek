@@ -65,7 +65,7 @@ function not_scanner(cid: conn_id): bool
 	if ( orig in Scan::whitelist_subnet )
 		return T;
 
-	# ignore scan sources (ex: cloud.lbl.gov)
+	# ignore scan sources 
 	if ( orig in skip_scan_sources )
 		return T;
 

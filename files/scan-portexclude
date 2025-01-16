@@ -1,0 +1,3 @@
+#fields	skip_port	t	comment
+1094	tcp	# xrootd
+1095	tcp	# xrootd
